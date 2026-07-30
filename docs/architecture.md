@@ -1,0 +1,198 @@
+# Architecture
+
+The build target for v1 is deliberately narrow — enough to choreograph one song
+— but every narrow piece sits behind a seam so the tool can widen without a
+rewrite. This document describes those seams and the data model.
+
+## Layering
+
+```text
+          ┌─────────────────────────────────────────────┐
+          │  app/     shell, providers, routing, auth    │
+          └──────────────────┬──────────────────────────┘
+                             │
+          ┌──────────────────▼──────────────────────────┐
+          │  features/   audio · waveform · beatgrid ·   │
+          │              sections · shapes · presets ·   │
+          │              playback                        │
+          └────────┬────────────────────────┬───────────┘
+                   │                        │
+       ┌───────────▼──────────┐   ┌─────────▼─────────────┐
+       │ domain/  pure TS      │   │ repositories/          │
+       │ types + time math     │   │ interfaces + adapters  │
+       │ NO framework imports  │   │ Firestore · IndexedDB  │
+       └───────────────────────┘   └─────────┬─────────────┘
+                                             │
+                                   ┌─────────▼─────────────┐
+                                   │ lib/firebase, browser │
+                                   │ storage APIs           │
+                                   └───────────────────────┘
+```
+
+The rule that carries the most weight: **features depend on repository
+interfaces, never on Firebase**. Swapping Firestore for something else, or
+running the whole app against an in-memory repository in tests, touches one
+file.
+
+## Domain model
+
+All times are integer **milliseconds** from the start of the audio file. Beats,
+bars, and 8-counts are derived, never stored.
+
+```ts
+type BeatGrid = {
+  bpm: number;              // 143 for the first project
+  firstBeatOffsetMs: number;// set by tap-tempo
+  beatsPerBar: number;      // 8 — an "8-count"
+};
+```
+
+Derived, in `domain/time.ts`:
+
+- `beatDurationMs(grid)` → `60000 / bpm`
+- `barDurationMs(grid)` → `beatDurationMs * beatsPerBar` (≈3357 ms at 143 BPM)
+- `msToBeat(grid, ms)` / `beatToMs(grid, beat)` — fractional beats
+- `snap(grid, ms, resolution)` / `snapForward(...)`, resolution ∈ `beat | halfBar | bar | free`
+- `barIndexAt(grid, ms)` → which 8-count you are in (2:45 ≈ 49 of them)
+
+This module is where off-by-one errors live, so it is the most heavily
+unit-tested part of the codebase.
+
+### Entities
+
+| Entity | Notes |
+| --- | --- |
+| `Project` | One choreo. Owns `BeatGrid`, audio metadata, sections, shapes. |
+| `Section` | `{ id, label, kind, colorToken, startMs, endMs }`. `kind` is an open string (`verse`, `chorus`, `bridge`, …) so new labels need no code change. |
+| `ShapeEntry` | `{ id, sectionId, startMs, durationMs, source, ... }`. Default `durationMs` = one bar. |
+| `ShapePreset` | Personal, reusable. Lives under the user, not the project, so presets follow you across choreos. |
+
+`ShapeEntry.source` is a discriminated union — this is the **ShapeSource** seam:
+
+```ts
+type ShapeEntrySource =
+  | { kind: 'preset'; presetId: string; nameSnapshot: string }
+  | { kind: 'freeText'; text: string };
+  // later: { kind: 'poseLibrary'; poseId } | { kind: 'videoRef'; ... }
+```
+
+`nameSnapshot` means renaming or deleting a preset never corrupts an existing
+choreo.
+
+## Persistence
+
+Firestore from day one, single project document with embedded arrays:
+
+```text
+users/{uid}                        { displayName?, createdAt, schemaVersion }
+users/{uid}/presets/{presetId}     ShapePreset — reusable across projects
+projects/{projectId}               Project + sections[] + shapes[]
+```
+
+**Why one document instead of subcollections:** a full 2:45 choreo is ~49
+8-counts, so sections + shapes serialize to well under 50 KB — far below the
+1 MB document limit. One document means one read to open a project, atomic
+reorders and drags, and trivial offline behaviour. The cost is the 1 write/sec
+per-document soft limit, which debounced saves (750 ms) sit comfortably under
+for a single editor.
+
+When real-time collaboration arrives, sections and shapes split into
+subcollections. That is a migration, gated on `schemaVersion`, entirely inside
+`FirestoreProjectRepository` — no feature code changes.
+
+Every document carries `ownerId`, an empty `members: {}` map, and
+`schemaVersion` from v1, so sharing and collaboration can be added without a
+backfill.
+
+### Repository interfaces
+
+```ts
+interface ProjectRepository {
+  list(): Promise<ProjectSummary[]>;
+  get(id: string): Promise<Project | null>;
+  subscribe(id: string, cb: (p: Project) => void): Unsubscribe;
+  create(input: NewProject): Promise<Project>;
+  update(id: string, patch: ProjectPatch): Promise<void>;
+  remove(id: string): Promise<void>;
+}
+
+interface PresetRepository { /* list · create · update · remove · subscribe */ }
+
+interface AudioStore {           // device-local only, never cloud
+  put(projectId: string, file: File): Promise<AudioMeta>;
+  get(projectId: string): Promise<File | null>;
+  forget(projectId: string): Promise<void>;
+  supportsHandles(): boolean;
+}
+```
+
+Implementations shipped in v1: `FirestoreProjectRepository`,
+`FirestorePresetRepository`, `HybridAudioStore`, plus `InMemory*` for tests.
+
+### Audio storage
+
+The audio blob is device-local, always. `HybridAudioStore` tries, in order:
+
+1. **File System Access API** — persist a `FileSystemFileHandle` in IndexedDB
+   (Chromium desktop). Reopening re-grants access with one click, no re-picking,
+   no duplicated bytes on disk.
+2. **IndexedDB blob** — copy the file into IndexedDB (Safari, Firefox, iOS).
+   Works everywhere, costs disk space, needs a "forget this song" control.
+
+The project document stores only `audioMeta: { name, sizeBytes, durationMs,
+contentHash }`. `contentHash` (SHA-256 of the first 1 MB + size) lets the app
+tell you "this isn't the same file" when you re-pick on another device.
+
+## Auth
+
+Anonymous sign-in happens silently on first load, so the app is usable in the
+studio with zero friction. A visible "Sign in with Google to sync across
+devices" action calls `linkWithPopup`, which upgrades the anonymous account
+**in place** — the uid does not change, so no data migration is needed. The
+already-linked case and the "this Google account already exists" collision case
+both need explicit handling; see the plan's Phase 2.
+
+## Rendering the timeline
+
+One `<canvas>` stack, driven by a registry rather than a monolithic draw
+function:
+
+```ts
+interface TimelineLayer {
+  id: string;
+  zIndex: number;
+  draw(ctx: CanvasRenderingContext2D, view: TimelineViewport, state: TimelineState): void;
+  hitTest?(pt: Point, view: TimelineViewport, state: TimelineState): HitTarget | null;
+}
+```
+
+v1 layers: `waveform`, `beatGrid`, `sections`, `shapes`, `playhead`, `selection`.
+Future layers (transitions, levels, floorwork, video sync marks) register into
+the same list. `TimelineViewport` holds `{ startMs, endMs, pxPerMs, height }`,
+so zoom and pan are a viewport concern that no layer needs to know about.
+
+Waveform peaks are computed once per file into a downsampled peak array (min/max
+per pixel bucket) in a Web Worker, cached in IndexedDB alongside the audio.
+Redraws read peaks, never the raw `AudioBuffer`.
+
+Playback uses `AudioBufferSourceNode` + `AudioContext.currentTime` for the
+position — not `<audio>.currentTime`, which is too coarse for a beat grid — with
+`requestAnimationFrame` driving the playhead.
+
+## Extensibility seams, summarised
+
+| Seam | v1 implementations | Added later without touching callers |
+| --- | --- | --- |
+| `ShapeSource` | preset, free text | pose library, video ref, photo |
+| `TimelineLayer` | waveform, grid, sections, shapes, playhead | transitions, levels, notes |
+| `DisciplineProfile` | pole | hoop, silks, floor |
+| `Exporter` | *(none)* | PDF, print sheet, video overlay |
+| `ProjectRepository` | Firestore | subcollection split, share links, offline queue |
+
+## PWA & offline
+
+`vite-plugin-pwa` (Workbox) precaches the app shell. Firestore offline
+persistence (`persistentLocalCache` with multi-tab support) makes project data
+readable and editable offline, with writes flushed on reconnect. Combined with
+the local audio store, a project opened once is fully usable in a studio
+basement with no signal — which is the actual use case.

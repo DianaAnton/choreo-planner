@@ -1,0 +1,80 @@
+name: Terraform
+
+on:
+  pull_request:
+    paths: ['terraform/**', '.github/workflows/terraform.yml']
+  push:
+    branches: [main]
+    paths: ['terraform/**']
+
+permissions:
+  contents: read
+  id-token: write
+  pull-requests: write
+
+jobs:
+  plan:
+    name: fmt · validate · plan
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: terraform
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.5.7
+
+      - name: Format check
+        run: terraform fmt -check -recursive
+
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_PLAN_SERVICE_ACCOUNT }}
+
+      - name: Init
+        run: terraform init -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
+
+      - name: Validate
+        run: terraform validate
+
+      - name: Plan
+        id: plan
+        # Read-only credentials, so no state lock can be taken.
+        run: |
+          terraform plan -lock=false -no-color -input=false \
+            -var="project_id=${{ vars.GCP_PROJECT_ID }}" \
+            -var="github_repository=${{ github.repository }}" \
+            > plan.txt 2>&1 || echo "failed=true" >> "$GITHUB_OUTPUT"
+          {
+            echo 'stdout<<PLANEOF'
+            tail -c 60000 plan.txt
+            echo 'PLANEOF'
+          } >> "$GITHUB_OUTPUT"
+
+      - uses: marocchino/sticky-pull-request-comment@v2
+        if: github.event_name == 'pull_request'
+        with:
+          header: terraform
+          message: |
+            ### 🏗 Terraform plan
+            <details><summary>Show plan</summary>
+
+            ```terraform
+            ${{ steps.plan.outputs.stdout }}
+            ```
+            </details>
+
+      - name: Fail if plan errored
+        if: steps.plan.outputs.failed == 'true'
+        run: exit 1
+
+  # `terraform apply` is deliberately NOT run here. Applying needs IAM-admin
+  # roles, which would make CI more privileged than anything it deploys. Run it
+  # yourself after the plan above is reviewed:
+  #
+  #   cd terraform && terraform apply
+  #
+  # See docs/decisions/0007-terraform-and-ci-identity.md.

@@ -1,0 +1,38 @@
+/* Design tokens live here until the UI layer lands in Phase 2. */
+:root {
+  --bg: #0f0d13;
+  --fg: #f3eef7;
+  --muted: #a99fb5;
+  --accent: #d94f8c;
+
+  color-scheme: dark;
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  /* Studio use: never let the page rubber-band while dragging on the timeline. */
+  overscroll-behavior: none;
+}
+
+.shell {
+  max-width: 48rem;
+  margin: 0 auto;
+  padding: 2rem 1.25rem;
+}
+
+dt {
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin-top: 1rem;
+}
+
+dd {
+  margin: 0.15rem 0 0;
+}

@@ -1,0 +1,55 @@
+rules_version = '2';
+
+// Owner-only in v1. `members` exists in the schema but is never populated yet —
+// see docs/decisions/0004-private-only-v1.md.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    // Fields the client must never change after creation. Enforced now so a
+    // future sharing feature cannot be retro-exploited on existing documents.
+    function ownershipUnchanged() {
+      return request.resource.data.ownerId == resource.data.ownerId
+        && request.resource.data.members == resource.data.members;
+    }
+
+    match /users/{uid} {
+      allow read, write: if isOwner(uid);
+
+      match /presets/{presetId} {
+        allow read, write: if isOwner(uid);
+      }
+    }
+
+    match /projects/{projectId} {
+      allow read: if signedIn() && resource.data.ownerId == request.auth.uid;
+
+      allow create: if signedIn()
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.members.size() == 0
+        && request.resource.data.schemaVersion is int;
+
+      // Note: on a *denied* write the emulator logs "evaluation error" against
+      // this rule. That is the pass where `resource` is not loaded; the write
+      // is denied either way and the allowed path evaluates cleanly. Covered by
+      // tests/rules/firestore.test.ts — don't "fix" it by loosening the rule.
+      allow update: if signedIn()
+        && resource.data.ownerId == request.auth.uid
+        && ownershipUnchanged();
+
+      allow delete: if signedIn() && resource.data.ownerId == request.auth.uid;
+    }
+
+    // Anything not matched above is denied.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

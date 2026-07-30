@@ -1,0 +1,42 @@
+node_modules/
+dist/
+dist-ssr/
+coverage/
+*.local
+.DS_Store
+
+# Secrets and per-machine config — never commit
+.env
+.env.*
+!.env.example
+.firebaserc
+serviceAccount*.json
+*-key.json
+
+# Firebase
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+emulator-data/
+
+# Terraform
+terraform/.terraform/
+terraform/*.tfstate
+terraform/*.tfstate.*
+terraform/terraform.tfvars
+terraform/*.tfplan
+terraform/plan.txt
+# .terraform.lock.hcl IS committed — it pins provider versions for CI.
+
+# Editors
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# Test output
+playwright-report/
+test-results/
+
+# TypeScript build info
+*.tsbuildinfo
