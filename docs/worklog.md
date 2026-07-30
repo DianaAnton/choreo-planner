@@ -157,3 +157,69 @@ themselves cannot be exercised until the Firebase project exists.
 The applier can grant itself any role — unavoidable for an identity that manages
 IAM. Containment is the repo condition on the pool, the `refs/heads/main`
 binding, and the `infrastructure` environment. Reasoning in ADR 0010.
+
+---
+
+## 2026-07-30 — Phase 2: auth, app shell, project list
+
+Branch: `feat/phase-2-auth-and-projects`.
+
+### Built
+
+- `src/lib/firebase.ts` — single init point, Firestore with
+  `persistentLocalCache` + multi-tab, emulator wiring behind `VITE_USE_EMULATORS`.
+- `src/domain/project.ts` — `createProject` / `validateNewProject`, pure and
+  unit-tested.
+- `AuthGateway` port + `FirebaseAuthGateway` / `InMemoryAuthGateway`.
+- `FirestoreProjectRepository` / `InMemoryProjectRepository`, plus a
+  `migrateProject` seam that refuses documents newer than this build.
+- Features `auth` and `projects`; app shell with routing and a placeholder
+  project detail page.
+
+### The AuthGateway port was not optional
+
+The eslint rule blocking Firebase imports in `src/features/**` applies to
+Firebase Auth too, so the auth feature could not call `signInAnonymously`
+directly. Rather than weaken the rule, identity became a port like persistence.
+Verified the guardrail actually fires by adding a `firebase/auth` import to a
+feature file and watching lint fail — it does.
+
+### Three Firebase auth bugs, all found by testing the real thing
+
+None threw an error; all three presented as "my choreo disappeared".
+
+1. **Anonymous account recreated on every load.** `auth.currentUser` is null
+   until Firebase finishes restoring the persisted session, so the null check
+   fired `signInAnonymously` and replaced the real account. Evidence: the
+   emulator held a project owned by a uid nothing was looking at any more.
+   Fixed with `await auth.authStateReady()`.
+2. **Linking Google didn't update the UI until reload.** `onAuthStateChanged`
+   does not fire on link — the uid is unchanged, so there is no state change.
+   Switched the subscription to `onIdTokenChanged`, which linking does trigger.
+3. **Two anonymous accounts created milliseconds apart.** React StrictMode
+   double-invokes effects; both calls found no session and both signed in.
+   Fixed by memoising the in-flight promise, and dropping it on failure so a
+   network blip can't wedge the app signed-out.
+
+Each has a regression test. Confirmed the tests genuinely catch the bugs by
+reverting the `authStateReady` fix and watching three of them fail.
+
+### Process mistake worth remembering
+
+While debugging, I cleared the emulator's auth accounts *while the browser held
+a live session*. The next reload failed to refresh a token for a now-deleted
+user, which looked exactly like the bug being chased and sent the investigation
+sideways for a round. Wipe emulator state before a test session, never during
+one.
+
+### Verified
+
+lint · typecheck · 43 unit tests · 14 rules tests (4 new, covering the list
+query) · build. Manually confirmed against emulators: create, reload-persists,
+sign out (choreos hidden), sign back in (choreos restored), and Google link
+updating the UI without a reload.
+
+### Known, not addressed
+
+The bundle is 877 kB raw / 266 kB gzipped, nearly all Firebase SDK. Fine for a
+precached PWA that loads once, worth code-splitting if it grows.

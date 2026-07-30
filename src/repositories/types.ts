@@ -1,7 +1,7 @@
 /**
- * Persistence interfaces. Feature code depends on these, never on Firebase —
- * that rule is what keeps the app testable offline and the storage decision
- * reversible. See docs/AGENTS.md.
+ * Persistence and identity interfaces. Feature code depends on these, never on
+ * Firebase — that rule is what keeps the app testable offline and the storage
+ * decision reversible. See docs/AGENTS.md.
  */
 
 import type { AudioMeta, Id, Project, ProjectSummary, ShapePreset } from '../domain/types';
@@ -22,8 +22,16 @@ export type ProjectPatch = Partial<
 
 export interface ProjectRepository {
   list(): Promise<ProjectSummary[]>;
+  /**
+   * Live list for the current user. The project list is the screen most likely
+   * to be open on a laptop while a phone edits the same account, so it streams
+   * rather than polling.
+   */
+  subscribeList(
+    onChange: (projects: ProjectSummary[]) => void,
+    onError: (error: Error) => void,
+  ): Unsubscribe;
   get(id: Id): Promise<Project | null>;
-  /** Live updates — the same project open on a phone and a laptop stays in sync. */
   subscribe(id: Id, onChange: (project: Project | null) => void): Unsubscribe;
   create(input: NewProject): Promise<Project>;
   update(id: Id, patch: ProjectPatch): Promise<void>;
@@ -50,4 +58,51 @@ export interface AudioStore {
   forget(projectId: Id): Promise<void>;
   /** Whether this browser can persist a file handle rather than copying bytes. */
   supportsHandles(): boolean;
+}
+
+// --- Identity --------------------------------------------------------------
+
+/**
+ * A framework-free view of the signed-in user. Deliberately not Firebase's
+ * `User`: features render this, and swapping the auth provider should not
+ * ripple into components.
+ */
+export interface AuthUser {
+  uid: string;
+  isAnonymous: boolean;
+  displayName: string | null;
+  email: string | null;
+  photoURL: string | null;
+}
+
+/**
+ * Outcome of trying to attach Google to the current anonymous account.
+ *
+ * `credentialInUse` is the case that matters: that Google account already owns
+ * data elsewhere, so linking would have to discard one side. We never choose
+ * for the user — see ADR 0003.
+ */
+export type LinkGoogleResult =
+  | { status: 'linked'; user: AuthUser }
+  | { status: 'alreadyLinked'; user: AuthUser }
+  | { status: 'credentialInUse' }
+  | { status: 'redirecting' }
+  | { status: 'cancelled' };
+
+export interface AuthGateway {
+  /**
+   * Current user, streamed. Emits `null` until the first sign-in resolves, so
+   * callers can distinguish "still starting up" from "signed out".
+   */
+  subscribe(onChange: (user: AuthUser | null) => void): Unsubscribe;
+  /** Silent anonymous sign-in. Safe to call repeatedly; resolves to the existing user. */
+  ensureSignedIn(): Promise<AuthUser>;
+  /** Upgrade the anonymous account to Google in place, preserving the uid. */
+  linkGoogle(): Promise<LinkGoogleResult>;
+  /**
+   * Abandon the local anonymous account and sign in as the Google account that
+   * already holds data. Only meaningful after `credentialInUse`.
+   */
+  switchToGoogleAccount(): Promise<AuthUser>;
+  signOut(): Promise<void>;
 }
