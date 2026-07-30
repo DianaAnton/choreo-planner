@@ -66,12 +66,12 @@ Actual secrets in this project: none. That is the point of WIF.
 
 ## Rollback
 
-Hosting keeps every release:
-
-```bash
-firebase hosting:releases:list --project "$PROJECT_ID"
-firebase hosting:rollback --project "$PROJECT_ID"
-```
+Hosting keeps every release, but **there is no CLI command for it** —
+`hosting:releases:list` and `hosting:rollback` don't exist in firebase-tools
+(checked against `firebase help`). Roll back from the console: **Hosting →
+choreo-planner → Release history → ⋮ → Rollback** on the release you want to
+restore. The alternative that does work everywhere: revert the commit on
+`main` and let `deploy.yml` ship it again after approval.
 
 Rules roll back by reverting the commit and re-running the deploy — the rules
 release is versioned in Firebase, but the repo is the source of truth.
@@ -96,9 +96,10 @@ Run through this once, in order, after `terraform apply`:
    touched `terraform/`) a plan comment.
 2. Open the preview URL on your phone. It should load.
 3. Merge. Expect the `production` job to pause for approval.
-4. Approve. Expect `https://<project-id>.web.app` to serve the new build.
-5. `firebase hosting:releases:list` should show the release tagged with the
-   commit SHA.
+4. Approve. Expect `https://<project-id>.web.app` to serve the new build —
+   verified working on this project: `curl` returns 200 and the real HTML.
+5. The Firebase console's **Hosting → Release history** should show the release
+   tagged with the commit SHA.
 6. For a `terraform/**` change, expect the apply job to run after the merge and
    its plan to match the PR comment. First time through, watch it rather than
    walking away.
