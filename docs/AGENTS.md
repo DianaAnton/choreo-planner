@@ -38,7 +38,7 @@ the code may hardcode it.
 
 ## Repo layout
 
-```
+```text
 docs/            This guide, the brief, the plan, ADRs, the worklog
 src/
   domain/        Pure TS: types + time math. No framework imports.
@@ -79,7 +79,13 @@ bumping it and adding a migration in `src/repositories/migrations/`.
 - `pnpm` is the package manager. Do not create `package-lock.json`.
 - Tests: Vitest for unit/domain, Playwright for e2e. Domain time math must be
   unit-tested — off-by-one beat errors are the single most likely bug class here.
+- **One branch per change, always.** Never commit directly to `main` — branch,
+  open a PR, let CI post its preview URL and (for `terraform/**`) its plan
+  comment, then merge. Branch names: `feat/`, `fix/`, `docs/`, `infra/`.
 - Commits: conventional commits (`feat:`, `fix:`, `docs:`, `chore:`, `infra:`).
+- **Merging a `terraform/**` change applies it.** The plan comment on the PR is
+  the review gate, not a preview you can ignore. See
+  [decisions/0010-terraform-apply-in-ci.md](decisions/0010-terraform-apply-in-ci.md).
 - Never commit `.firebaserc`, `terraform.tfvars`, service-account keys, or any
   `.env*` file other than `.env.example`.
 

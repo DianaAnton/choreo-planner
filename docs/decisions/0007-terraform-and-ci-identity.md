@@ -1,6 +1,11 @@
 # ADR 0007 — Terraform owns infrastructure; GitHub authenticates via WIF
 
-**Date:** 2026-07-30 · **Status:** accepted
+**Date:** 2026-07-30 · **Status:** accepted, partly superseded
+
+> The "apply is manual" consequence below was superseded the same day by
+> [ADR 0010](0010-terraform-apply-in-ci.md): apply now runs in CI on merge to
+> main. Everything else here — manual project creation, Terraform ownership,
+> GCS state, WIF instead of JSON keys — still stands.
 
 ## Context
 
@@ -35,10 +40,10 @@ you as a side effect.
   `FIREBASE_SERVICE_ACCOUNT` secret, and open a follow-up issue to migrate. Ship
   beats purity here, as long as the debt is written down.
 - PRs get a `terraform plan` comment from a read-only service account
-  (`roles/viewer`, `-lock=false`). **`terraform apply` is not run by CI** — apply
-  needs IAM-admin roles, which would make the pipeline more privileged than
-  anything it deploys. Infrastructure changes are applied from a laptop after
-  the plan comment is reviewed.
-- Two CI service accounts, so a compromised deploy job cannot read state:
-  `github-deployer` (Hosting + rules + indexes) and `github-terraform-plan`
-  (viewer + state-bucket read).
+  (`roles/viewer`, `-lock=false`). ~~`terraform apply` is not run by CI.~~
+  **Superseded by [ADR 0010](0010-terraform-apply-in-ci.md)** — apply runs on
+  merge to main, with the PR plan comment as the review gate.
+- Separate CI service accounts, so a compromised deploy job cannot read state
+  or change IAM: `github-deployer` (Hosting + rules + indexes),
+  `github-terraform-plan` (viewer + state-bucket read), and — per ADR 0010 —
+  `github-terraform-apply` (privileged, restricted to `refs/heads/main`).

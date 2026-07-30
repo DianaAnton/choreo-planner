@@ -5,17 +5,24 @@ on:
     paths: ['terraform/**', '.github/workflows/terraform.yml']
   push:
     branches: [main]
-    paths: ['terraform/**']
+    paths: ['terraform/**', '.github/workflows/terraform.yml']
 
 permissions:
   contents: read
   id-token: write
   pull-requests: write
 
+# Never let two applies touch the same state. No cancel-in-progress: killing an
+# apply mid-run is how you get a stale lock and a half-built project.
+concurrency:
+  group: terraform-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   plan:
     name: fmt · validate · plan
     runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
     defaults:
       run:
         working-directory: terraform
@@ -40,14 +47,14 @@ jobs:
       - name: Validate
         run: terraform validate
 
+      # Inputs come from terraform/prod.auto.tfvars, which is committed, so this
+      # plan is exactly what the apply job will run after the merge.
       - name: Plan
         id: plan
         # Read-only credentials, so no state lock can be taken.
         run: |
-          terraform plan -lock=false -no-color -input=false \
-            -var="project_id=${{ vars.GCP_PROJECT_ID }}" \
-            -var="github_repository=${{ github.repository }}" \
-            > plan.txt 2>&1 || echo "failed=true" >> "$GITHUB_OUTPUT"
+          terraform plan -lock=false -no-color -input=false > plan.txt 2>&1 \
+            || echo "failed=true" >> "$GITHUB_OUTPUT"
           {
             echo 'stdout<<PLANEOF'
             tail -c 60000 plan.txt
@@ -55,11 +62,13 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - uses: marocchino/sticky-pull-request-comment@v2
-        if: github.event_name == 'pull_request'
         with:
           header: terraform
           message: |
             ### 🏗 Terraform plan
+
+            This is what will be applied when the PR merges. Review it before approving.
+
             <details><summary>Show plan</summary>
 
             ```terraform
@@ -71,10 +80,41 @@ jobs:
         if: steps.plan.outputs.failed == 'true'
         run: exit 1
 
-  # `terraform apply` is deliberately NOT run here. Applying needs IAM-admin
-  # roles, which would make CI more privileged than anything it deploys. Run it
-  # yourself after the plan above is reviewed:
-  #
-  #   cd terraform && terraform apply
-  #
-  # See docs/decisions/0007-terraform-and-ci-identity.md.
+  apply:
+    name: apply
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    defaults:
+      run:
+        working-directory: terraform
+    # The `infrastructure` environment is the last stop before real changes.
+    # Leave it without required reviewers for hands-off applies, or add
+    # yourself for a second confirmation after the PR review.
+    environment: infrastructure
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.5.7
+
+      # Privileged identity — see ADR 0010. Only usable from refs/heads/main.
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_APPLY_SERVICE_ACCOUNT }}
+
+      - name: Init
+        run: terraform init -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
+
+      # Re-plan into a file, then apply that exact file. Applying a saved plan
+      # rather than re-resolving means main cannot drift between the plan you
+      # reviewed on the PR and what actually runs.
+      - name: Plan
+        run: terraform plan -input=false -no-color -out=tfplan
+
+      - name: Apply
+        run: terraform apply -input=false -no-color tfplan
+
+      - name: Outputs
+        run: terraform output -json github_actions_config

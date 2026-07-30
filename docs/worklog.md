@@ -104,3 +104,56 @@ state bucket, and the GitHub variables — all in
 - Custom domain, or is `<project>.web.app` fine?
 - Firestore location: `eur3` assumed. Permanent once applied — confirm before
   the first `terraform apply`.
+
+---
+
+## 2026-07-30 — Terraform apply on merge
+
+Branch: `infra/terraform-apply-on-merge`.
+
+### Answers to the open questions above
+
+- **No custom domain.** `<project>.web.app` it is; the Authorized-domains step
+  in [firebase-setup.md](firebase-setup.md) now says so explicitly.
+- **Firestore location stays `eur3`.** Worth recording that this is *not*
+  Ireland — it is the Europe multi-region, `europe-west1` (Belgium) +
+  `europe-west4` (Netherlands). GCP has no Ireland region; that is AWS
+  `eu-west-1`. Noted in `prod.auto.tfvars` so nobody re-asks.
+
+### Change
+
+The owner asked for `terraform apply` on merge, with the PR plan comment as the
+review gate. That reverses the "apply is manual" call in
+[ADR 0007](decisions/0007-terraform-and-ci-identity.md), so it is recorded as
+[ADR 0010](decisions/0010-terraform-apply-in-ci.md) and 0007 is marked partly
+superseded rather than edited.
+
+- `terraform.yml`: `plan` job now PR-only; new `apply` job on push to `main`,
+  gated by an `infrastructure` environment. Concurrency group added with
+  `cancel-in-progress: false` — cancelling an apply mid-run leaves a stale lock.
+- New `github-terraform-apply` service account with enumerated admin roles
+  (not `roles/owner`), bound to `attribute.ref/refs/heads/main` so a PR branch
+  cannot assume it.
+- **`terraform/prod.auto.tfvars` is now committed** and `terraform.tfvars.example`
+  is gone. Previously CI passed `-var` flags while a laptop would have used a
+  local `terraform.tfvars` — with apply automated, those two disagreeing would
+  flip infrastructure back and forth on alternate runs. One committed file
+  removes the whole failure mode.
+- The apply job applies a **saved plan file** rather than re-resolving, so
+  nothing can change between plan and apply inside a run.
+
+### Process
+
+From here on: one branch per change, PR, merge — no more direct commits to
+`main`. Written into [AGENTS.md](AGENTS.md) so it binds future sessions too.
+
+### Verified
+
+`terraform fmt -check -recursive` and `terraform validate` pass. The workflows
+themselves cannot be exercised until the Firebase project exists.
+
+### Flagged, not blocking
+
+The applier can grant itself any role — unavoidable for an identity that manages
+IAM. Containment is the repo condition on the pool, the `refs/heads/main`
+binding, and the `infrastructure` environment. Reasoning in ADR 0010.
