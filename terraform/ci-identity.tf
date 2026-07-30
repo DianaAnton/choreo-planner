@@ -63,10 +63,10 @@ resource "google_service_account_iam_member" "deployer_wif" {
 }
 
 # ---------------------------------------------------------------------------
-# Planner — read-only, so PRs can post a `terraform plan` diff.
-# `terraform apply` deliberately stays a local, human-run operation: granting CI
-# the IAM-admin roles apply needs would make the pipeline more privileged than
-# anything it deploys.
+# Planner — read-only, so PRs can post a `terraform plan` diff. That comment is
+# the review gate for the apply that runs on merge (ADR 0010), which is why this
+# account is kept separate: a PR from any branch can plan, but planning can
+# never change anything.
 # ---------------------------------------------------------------------------
 
 resource "google_service_account" "planner" {
@@ -92,4 +92,49 @@ resource "google_service_account_iam_member" "planner_wif" {
   service_account_id = google_service_account.planner.name
   role               = "roles/iam.workloadIdentityUser"
   member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github.name}/attribute.repository/${var.github_repository}"
+}
+
+# ---------------------------------------------------------------------------
+# Applier — runs `terraform apply` after a PR merges to main (ADR 0010).
+#
+# This is the most privileged identity in the project: the roles Terraform
+# needs to manage IAM are also enough to grant anything else. It is constrained
+# by (a) the WIF attribute condition pinning it to this repository, (b) an
+# `attribute.ref` condition pinning it to refs/heads/main, and (c) the
+# `infrastructure` GitHub environment. Do not reuse it for app deploys.
+# ---------------------------------------------------------------------------
+
+resource "google_service_account" "applier" {
+  project      = var.project_id
+  account_id   = "github-terraform-apply"
+  display_name = "GitHub Actions — terraform apply (privileged)"
+}
+
+resource "google_project_iam_member" "applier" {
+  for_each = toset([
+    "roles/serviceusage.serviceUsageAdmin",  # google_project_service
+    "roles/datastore.owner",                 # google_firestore_database
+    "roles/firebase.admin",                  # google_firebase_hosting_site
+    "roles/iam.workloadIdentityPoolAdmin",   # the WIF pool and provider
+    "roles/iam.serviceAccountAdmin",         # the three service accounts
+    "roles/resourcemanager.projectIamAdmin", # google_project_iam_member
+  ])
+
+  project = var.project_id
+  role    = each.value
+  member  = "serviceAccount:${google_service_account.applier.email}"
+}
+
+# Read/write state, and manage the bucket IAM binding Terraform owns.
+resource "google_storage_bucket_iam_member" "applier_state" {
+  bucket = local.state_bucket
+  role   = "roles/storage.admin"
+  member = "serviceAccount:${google_service_account.applier.email}"
+}
+
+# Pinned to main: a PR branch can plan, but only a merged commit can apply.
+resource "google_service_account_iam_member" "applier_wif" {
+  service_account_id = google_service_account.applier.name
+  role               = "roles/iam.workloadIdentityUser"
+  member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github.name}/attribute.ref/refs/heads/main"
 }

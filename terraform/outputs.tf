@@ -20,6 +20,7 @@ output "github_actions_config" {
     GCP_WIF_PROVIDER           = google_iam_workload_identity_pool_provider.github.name
     GCP_DEPLOY_SERVICE_ACCOUNT = google_service_account.deployer.email
     GCP_PLAN_SERVICE_ACCOUNT   = google_service_account.planner.email
+    GCP_APPLY_SERVICE_ACCOUNT  = google_service_account.applier.email
     TF_STATE_BUCKET            = local.state_bucket
   }
 }

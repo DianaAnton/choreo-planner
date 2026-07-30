@@ -123,7 +123,9 @@ Firebase console → **Authentication** → **Get started** → **Sign-in method
    OFF.** If it is on, an unsynced project can disappear after 30 days. See
    [ADR 0003](decisions/0003-auth-anonymous-plus-google.md).
 4. **Settings → Authorized domains** — `localhost` and the two Firebase Hosting
-   domains are added automatically. Add a custom domain here later if you get one.
+   domains are added automatically, which is all that's needed: no custom domain
+   is planned. If you add one later, it must be registered here too or Google
+   sign-in will fail on it.
 
 ---
 
@@ -150,31 +152,40 @@ to match your own preference, not the Firestore location.
 
 ## 6. First Terraform run
 
+Variables live in `terraform/prod.auto.tfvars`, which is **committed** — CI and
+your laptop must read the same inputs. Edit it first if your project ID picked
+up a random suffix:
+
+```hcl
+project_id          = "choreo-planner"
+firestore_location  = "eur3"
+github_repository   = "DianaAnton/choreo-planner"
+enable_staging_site = false
+```
+
+Then:
+
 ```bash
 cd terraform
-cp terraform.tfvars.example terraform.tfvars   # then edit it
 terraform init -backend-config="bucket=${PROJECT_ID}-tfstate"
 terraform plan
 terraform apply
 ```
 
-`terraform.tfvars` needs:
-
-```hcl
-project_id           = "choreo-planner"
-firestore_location   = "eur3"          # or "nam5" — SEE THE WARNING BELOW
-github_repository    = "DianaAnton/choreo-planner"
-enable_staging_site  = false           # true requires Blaze; previews work either way
-```
-
 > ⚠️ **`firestore_location` is permanent.** A Firestore database's location can
 > never be changed after creation — the only fix is deleting the database and
-> losing its data. Pick the multi-region nearest you (`eur3` for Europe, `nam5`
-> for North America) and be sure before you apply.
+> losing its data. `eur3` is the Europe multi-region (`europe-west1` Belgium +
+> `europe-west4` Netherlands); `nam5` is North America. GCP has no Ireland
+> region — that is AWS. Be sure before you apply.
+
+This first apply is the only one you run by hand. After it, merging a
+`terraform/**` change to `main` applies automatically — see
+[deployment.md](deployment.md).
 
 Terraform will create: API enablement, the Firestore database, the Hosting
-site(s), the CI service account with its IAM roles, and the Workload Identity
-Federation pool and provider.
+site(s), the Workload Identity Federation pool and provider, and three CI
+service accounts (`github-deployer`, `github-terraform-plan`,
+`github-terraform-apply`) with their IAM bindings.
 
 At the end it prints the values you need for GitHub:
 
@@ -197,18 +208,22 @@ gh variable set VITE_FIREBASE_STORAGE_BUCKET      --body "choreo-planner.firebas
 gh variable set VITE_FIREBASE_MESSAGING_SENDER_ID --body "..."
 gh variable set VITE_FIREBASE_APP_ID              --body "..."
 
-# From terraform output
-gh variable set GCP_PROJECT_ID                    --body "choreo-planner"
-gh variable set GCP_WIF_PROVIDER                  --body "projects/123.../providers/github"
-gh variable set GCP_SERVICE_ACCOUNT               --body "github-actions@choreo-planner.iam.gserviceaccount.com"
+# From `terraform output -json github_actions_config`
+gh variable set GCP_PROJECT_ID             --body "choreo-planner"
+gh variable set GCP_WIF_PROVIDER           --body "projects/123.../providers/github"
+gh variable set GCP_DEPLOY_SERVICE_ACCOUNT --body "github-deployer@choreo-planner.iam.gserviceaccount.com"
+gh variable set GCP_PLAN_SERVICE_ACCOUNT   --body "github-terraform-plan@choreo-planner.iam.gserviceaccount.com"
+gh variable set GCP_APPLY_SERVICE_ACCOUNT  --body "github-terraform-apply@choreo-planner.iam.gserviceaccount.com"
+gh variable set TF_STATE_BUCKET            --body "choreo-planner-tfstate"
 ```
 
-Then create the deploy gate:
+Then create two gates under **GitHub → Settings → Environments**:
 
-**GitHub → Settings → Environments → New environment → `production`** → add
-yourself as a **required reviewer**. Production deploys and `terraform apply`
-both run through this environment, so nothing reaches live without one click
-from you.
+- **`production`** — add yourself as a **required reviewer**. Every production
+  app deploy waits here.
+- **`infrastructure`** — used by the `terraform apply` job that runs on merge.
+  Leave it without reviewers if reading the plan comment on the PR is gate
+  enough for you; add yourself if you want to confirm twice.
 
 ---
 
@@ -236,6 +251,9 @@ should wait for your approval, then publish.
 - [ ] Web app registered; config values copied to `.env.local`
 - [ ] Anonymous + Google sign-in enabled; anonymous auto-delete OFF
 - [ ] Terraform state bucket created with versioning
-- [ ] `terraform apply` succeeded
-- [ ] GitHub variables set; `production` environment created with a reviewer
+- [ ] `terraform/prod.auto.tfvars` matches your real project ID
+- [ ] First `terraform apply` succeeded (run by hand; later ones run on merge)
+- [ ] GitHub variables set (six `VITE_*` plus six `GCP_*`/`TF_*`)
+- [ ] `production` environment created with a reviewer
+- [ ] `infrastructure` environment created
 - [ ] Test PR produced a preview URL; merge deployed to prod

@@ -26,6 +26,7 @@ Everything about this project that isn't code.
 | [0007](decisions/0007-terraform-and-ci-identity.md) | Terraform + Workload Identity Federation |
 | [0008](decisions/0008-single-document-project.md) | A project is one Firestore document |
 | [0009](decisions/0009-extensibility-seams.md) | Registries, not conditionals |
+| [0010](decisions/0010-terraform-apply-in-ci.md) | Terraform applies in CI on merge to main |
 
 ## Adding to this
 
