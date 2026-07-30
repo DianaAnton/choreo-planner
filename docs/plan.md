@@ -42,7 +42,7 @@ JSON key in a GitHub secret and open a follow-up issue — noted in
 
 ---
 
-## Phase 2 — Auth, app shell, project list
+## Phase 2 — Auth, app shell, project list ✅ (done)
 
 1. `lib/firebase.ts` — app init, Firestore with `persistentLocalCache`, Auth.
 2. Silent anonymous sign-in on load; auth state in an `AuthProvider`.
@@ -57,6 +57,17 @@ JSON key in a GitHub secret and open a follow-up issue — noted in
 
 **Exit criteria:** create a project on the laptop, sign in with Google on the
 phone, see the same project.
+
+**What actually landed:** all six items, plus an `AuthGateway` port — the eslint
+layering rule forbids features from importing Firebase, and that applies to Auth
+as much as Firestore. Rules tests now also cover the owner-scoped *query* the
+project list issues, not just per-document reads; a query whose constraints
+don't match the rules fails wholesale, and nothing else would have caught it.
+
+Three Firebase auth pitfalls ate most of the debugging time and are written up
+in [architecture.md](architecture.md#auth): async session restore, `linkWithPopup`
+not firing `onAuthStateChanged`, and StrictMode double-invocation creating
+duplicate anonymous accounts.
 
 ---
 

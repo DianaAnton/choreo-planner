@@ -109,8 +109,9 @@ backfill.
 ```ts
 interface ProjectRepository {
   list(): Promise<ProjectSummary[]>;
+  subscribeList(cb: (p: ProjectSummary[]) => void, onError: (e: Error) => void): Unsubscribe;
   get(id: string): Promise<Project | null>;
-  subscribe(id: string, cb: (p: Project) => void): Unsubscribe;
+  subscribe(id: string, cb: (p: Project | null) => void): Unsubscribe;
   create(input: NewProject): Promise<Project>;
   update(id: string, patch: ProjectPatch): Promise<void>;
   remove(id: string): Promise<void>;
@@ -126,8 +127,27 @@ interface AudioStore {           // device-local only, never cloud
 }
 ```
 
-Implementations shipped in v1: `FirestoreProjectRepository`,
-`FirestorePresetRepository`, `HybridAudioStore`, plus `InMemory*` for tests.
+**Identity is a port too.** The eslint layering rule forbids `src/features/**`
+from importing Firebase at all, which applies to Firebase Auth exactly as it
+does to Firestore. So auth sits behind `AuthGateway`, and the auth *feature*
+renders a plain `AuthUser` it could get from anywhere:
+
+```ts
+interface AuthGateway {
+  subscribe(cb: (user: AuthUser | null) => void): Unsubscribe;
+  ensureSignedIn(): Promise<AuthUser>;
+  linkGoogle(): Promise<LinkGoogleResult>;
+  switchToGoogleAccount(): Promise<AuthUser>;
+  signOut(): Promise<void>;
+}
+```
+
+Implementations: `FirestoreProjectRepository`, `FirebaseAuthGateway`, plus
+`InMemoryProjectRepository` / `InMemoryAuthGateway` for tests. Still to come:
+`FirestorePresetRepository` and `HybridAudioStore`.
+
+Concrete classes are named in exactly one place — `src/app/App.tsx`, the
+composition root — and injected downward as props.
 
 ### Audio storage
 
@@ -146,11 +166,34 @@ tell you "this isn't the same file" when you re-pick on another device.
 ## Auth
 
 Anonymous sign-in happens silently on first load, so the app is usable in the
-studio with zero friction. A visible "Sign in with Google to sync across
-devices" action calls `linkWithPopup`, which upgrades the anonymous account
-**in place** — the uid does not change, so no data migration is needed. The
-already-linked case and the "this Google account already exists" collision case
-both need explicit handling; see the plan's Phase 2.
+studio with zero friction. A visible "Sign in to sync" action calls
+`linkWithPopup`, which upgrades the anonymous account **in place** — the uid
+does not change, so no data migration is needed.
+
+Three Firebase behaviours cost real debugging time in Phase 2. They are subtle,
+they all present as "my data disappeared", and none of them throws:
+
+1. **`auth.currentUser` is null until the session is restored.** Firebase
+   rehydrates persisted sessions asynchronously. Reading `currentUser`
+   synchronously and signing in anonymously on a null result creates a *new*
+   account on every page load, silently orphaning the previous one and
+   everything written under it. `ensureSignedIn` awaits `auth.authStateReady()`
+   first.
+2. **`onAuthStateChanged` does not fire when a provider is linked.** Linking
+   keeps the same uid, so the auth *state* never changes and the UI keeps
+   showing "anonymous" until the next reload. The gateway subscribes with
+   **`onIdTokenChanged`** instead, which does fire — linking mints a new token.
+3. **Concurrent sign-in calls each create an account.** React StrictMode
+   double-invokes effects in development, so two overlapping `ensureSignedIn()`
+   calls produced two anonymous accounts milliseconds apart. The gateway
+   memoises the in-flight promise (and drops it on failure, so a network blip
+   cannot wedge the app signed-out).
+
+All three are covered by `src/repositories/FirebaseAuthGateway.test.ts`.
+
+The `credential-already-in-use` collision — that Google account already owns
+data — is never resolved automatically. The user is asked, because either choice
+abandons something.
 
 ## Rendering the timeline
 
