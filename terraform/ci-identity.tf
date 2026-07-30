@@ -88,6 +88,17 @@ resource "google_storage_bucket_iam_member" "planner_state" {
   member = "serviceAccount:${google_service_account.planner.email}"
 }
 
+# Separate from objectViewer above: this config declares IAM bindings ON this
+# bucket (this resource and applier_state below), so planning them at all
+# requires reading the bucket's current IAM policy — storage.buckets.getIamPolicy
+# — which objectViewer does not grant. Without this, every plan run fails on its
+# own bucket bindings, including this one.
+resource "google_storage_bucket_iam_member" "planner_state_policy_read" {
+  bucket = local.state_bucket
+  role   = "roles/storage.legacyBucketReader"
+  member = "serviceAccount:${google_service_account.planner.email}"
+}
+
 resource "google_service_account_iam_member" "planner_wif" {
   service_account_id = google_service_account.planner.name
   role               = "roles/iam.workloadIdentityUser"
