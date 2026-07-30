@@ -93,9 +93,24 @@ resource "google_storage_bucket_iam_member" "planner_state" {
 # requires reading the bucket's current IAM policy — storage.buckets.getIamPolicy
 # — which objectViewer does not grant. Without this, every plan run fails on its
 # own bucket bindings, including this one.
+#
+# No predefined role grants just this: storage.legacyBucketReader does NOT
+# include it (verified against `gcloud iam roles describe`, despite being the
+# commonly-suggested fix online); the only predefined roles that do —
+# storage.admin and storage.legacyBucketOwner — also grant write, which would
+# defeat the point of a read-only plan identity. Hence the one-permission
+# custom role below.
+resource "google_project_iam_custom_role" "bucket_iam_reader" {
+  project     = var.project_id
+  role_id     = "bucketIamPolicyReader"
+  title       = "Bucket IAM policy reader"
+  description = "Read a bucket's IAM policy without any object or bucket write access."
+  permissions = ["storage.buckets.getIamPolicy"]
+}
+
 resource "google_storage_bucket_iam_member" "planner_state_policy_read" {
   bucket = local.state_bucket
-  role   = "roles/storage.legacyBucketReader"
+  role   = google_project_iam_custom_role.bucket_iam_reader.id
   member = "serviceAccount:${google_service_account.planner.email}"
 }
 
@@ -129,6 +144,7 @@ resource "google_project_iam_member" "applier" {
     "roles/iam.workloadIdentityPoolAdmin",   # the WIF pool and provider
     "roles/iam.serviceAccountAdmin",         # the three service accounts
     "roles/resourcemanager.projectIamAdmin", # google_project_iam_member
+    "roles/iam.roleAdmin",                   # google_project_iam_custom_role
   ])
 
   project = var.project_id
