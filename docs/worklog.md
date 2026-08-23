@@ -347,3 +347,53 @@ knowing before running this on a network you do not trust.
 
 Note: `pnpm test:rules` cannot run while an interactive emulator holds port
 8080. Stop it first.
+
+---
+
+## 2026-08-23 — The first deploy of the training layer looked empty
+
+Branch: `fix/pwa-stale-shell`.
+
+### What happened
+
+Phase 2.5 merged and deployed successfully, and the live site still showed no
+training section. The deploy was fine — `curl` confirmed the served bundle
+contained the routes and every screen's copy, and `sw.js` carried the new
+revision. The stale thing was the *browser*.
+
+The Phase 2 build registered a service worker that precached `index.html`, and
+`navigateFallback` serves navigations from that precache. `registerType:
+'prompt'` then means a new build installs and **waits** for something to call
+`updateServiceWorker()` — and the Phase 2 build shipped no UI to call it,
+because `UpdatePrompt` only arrived with Phase 2.5. A waiting worker activates
+only once every client in scope closes, which on a phone can be never.
+
+So every returning visitor kept being handed the old shell, with no way out
+short of clearing site data by hand.
+
+### Why this was foreseeable
+
+The PWA was pulled forward onto a site that had already been deployed once. The
+transition — old worker, no update UI, new build waiting behind it — is a
+property of that ordering, and it was not thought about when the pull-forward
+was planned. Anyone adding a service worker to an already-live site inherits
+the same trap.
+
+### Fixed
+
+- `UpdatePrompt` now re-checks for a new build hourly via
+  `registration.update()` in `onRegisteredSW`. A browser otherwise only looks
+  on navigation, which for an installed PWA can be days. A prompt nobody is
+  around to see is the same as no prompt.
+- `cleanupOutdatedCaches: true` in the Workbox config, so old precache
+  revisions are not carried around on a phone with a small quota.
+
+`registerType` stays `prompt`. Reloading out from under someone mid-log is
+still the worse failure; the problem was never the prompt, it was that nothing
+ever showed one.
+
+### Not fixable in code
+
+Anyone already holding the stale worker has to clear it by hand — unregister in
+DevTools, close every tab, or delete and re-add the installed app. New code
+cannot reach a browser that will not fetch it.
