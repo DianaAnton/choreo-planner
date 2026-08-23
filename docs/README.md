@@ -27,6 +27,7 @@ Everything about this project that isn't code.
 | [0008](decisions/0008-single-document-project.md) | A project is one Firestore document |
 | [0009](decisions/0009-extensibility-seams.md) | Registries, not conditionals |
 | [0010](decisions/0010-terraform-apply-in-ci.md) | Terraform applies in CI on merge to main |
+| [0011](decisions/0011-training-layer.md) | The training layer, built on the preset library |
 
 ## Adding to this
 

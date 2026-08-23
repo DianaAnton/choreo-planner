@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router';
 
 import { AccountBar } from '../../features/auth';
 import { CreateProjectForm, ProjectList, useProjects } from '../../features/projects';
@@ -14,6 +15,11 @@ export function ProjectsPage() {
         <h1>Choreo Planner</h1>
         <AccountBar />
       </header>
+
+      <nav className="tabs" aria-label="Sections">
+        <Link to="/">Choreos</Link>
+        <Link to="/training">Training</Link>
+      </nav>
 
       {error && (
         <p className="notice notice--error" role="alert">

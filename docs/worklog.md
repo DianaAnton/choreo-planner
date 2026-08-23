@@ -223,3 +223,127 @@ updating the UI without a reload.
 
 The bundle is 877 kB raw / 266 kB gzipped, nearly all Firebase SDK. Fine for a
 precached PWA that loads once, worth code-splitting if it grows.
+
+---
+
+## 2026-08-23 — Phase 2.5: the training layer
+
+Branch: `feat/phase-2.5-training-layer`, off Phase 2 (which is not yet merged —
+this depends on it).
+
+Session goal: fold the training-layer decision into the planning docs, then
+build it. Handoff notes in
+[decisions/handoff-training-layer.md](decisions/handoff-training-layer.md).
+
+### Docs first
+
+- Folded `plan-ammendment.md` into [plan.md](plan.md) — Phase 2.5 inserted
+  between 2 and 3, Phase 6 revised from "shapes and presets" to "shapes and
+  skills", Phase 7's PWA item struck through and pointed at 2.5, sequencing note
+  extended. The amendment file was then deleted: keeping a document that says
+  "two edits to plan.md" after making them is how docs start lying.
+- [ADR 0011](decisions/0011-training-layer.md) moved `proposed` → `accepted`,
+  with one correction to §4 (below).
+- [architecture.md](architecture.md) and the ADR index caught up: entities,
+  the `ShapeSource` union, the Firestore layout, the repository interfaces.
+
+### The one thing in the ADR that was wrong
+
+§4 said `skill` becomes "the third `ShapeSource`", replacing a `poseLibrary`
+placeholder "reserved in `domain/types.ts`". There was no such placeholder —
+it is a comment in architecture.md — and "third" contradicts §1, which
+dissolves the preset entity: a `preset` source would point at a collection that
+no longer exists. The union stays at two members, `skill` and `freeText`, which
+is also exactly the two authoring routes the brief asks for side by side.
+Corrected in place because the ADR was still `proposed`.
+
+### Built
+
+- `src/domain/training.ts` — ladder ordinal, the WIP cap, staleness, week
+  boundaries, metric bests, validation. Pure, 48 tests.
+- `src/domain/trainingSeed.ts` — the road to an Ayesha as a `requires` chain,
+  plus a topological order so each `requires` resolves to a real id on write.
+- `TrainingRepository` port, `FirestoreTrainingRepository`,
+  `InMemoryTrainingRepository`. `PresetRepository` deleted, subsumed.
+- Rules extended to `skills/`, `sessions/`, `inbox/`; `presets/` removed and a
+  test added proving it is now denied.
+- Five screens under `src/features/training/`, and the PWA pulled forward from
+  Phase 7 into `src/features/pwa/`.
+- `SCHEMA_VERSION` 1 → 2, and the first actual entry in `migrations/`.
+
+### Three judgement calls worth defending
+
+1. **The cap blocks promotion, not just activation.** The plan says promotion
+   from the Inbox is blocked at three active quests. Strictly, a promoted quest
+   is created parked, so the cap would not bite — which is precisely the hole:
+   the Inbox is where "a shinier one on Thursday" enters, and admitting it as an
+   inactive quest moves the pile somewhere the cap cannot see. `canPromoteToKind`
+   blocks quests at the cap and never blocks practice, since practice is
+   uncapped by ADR 0011 §2.
+
+2. **Staleness needed a rule the plan did not state.** "A skill at `cleanRep` or
+   above, untouched for 42 days" says nothing about practice skills, which have
+   no ladder at all. They are flagged on recency alone — that is what makes them
+   a menu. Quests below `cleanRep` are never flagged: you cannot be rusty at
+   something you never had.
+
+3. **The Log screen only offers a number for skills with a unit configured.**
+   `improvedMetric` returns null when a skill has no metric, because "40" is
+   meaningless without knowing whether it is seconds or reps. An input that
+   silently discards what you type is worse than no input, so the field only
+   appears once a unit exists. Setting one is on the Skill detail screen.
+
+### A trap built and then defused
+
+`startOfWeek` first read `addDays(key, -(((dow - start) % 7) + 7) % 7)`. Unary
+minus binds tighter than `%`, so the modulo landed on the negated value and the
+week boundary was wrong for most days. Caught by writing the test against
+independently-checked weekdays rather than against the implementation — the
+calendar assumptions in `training.test.ts` were verified out-of-band before the
+test was trusted.
+
+Date keys are also arithmetic'd as UTC midnight rather than local time, with a
+test at the 2026-03-29 DST boundary. A calendar date has no timezone, and
+local-time day arithmetic is wrong twice a year.
+
+### Verified
+
+lint · typecheck · 113 unit tests (43 → 113) · 24 rules tests (14 → 24) ·
+production build with the service worker and all three icons precached. Every
+new module confirmed to transform under `vite dev`.
+
+**Not verified:** no browser walkthrough. There is no Playwright or jsdom in
+this repo, so the screens have not been driven — not by an agent, not at all.
+The phase's exit criteria (log a real session on a phone, offline, then again
+the following week) are a fortnight of actual training and are the user's to
+run.
+
+### Known, not addressed
+
+Prerequisites are seeded but not editable in the UI; a metric can be started but
+not cleared; `removeSkill` tolerates dangling prerequisites in Firestore rather
+than sweeping them. All three are argued in the handoff note.
+
+### Follow-up the same day: emulators reachable from a phone
+
+Clicking through on a handset did not work, for a reason worth writing down.
+`lib/firebase.ts` hardcoded the emulator host as `127.0.0.1`. Served over the
+LAN, that resolves to the *phone*, so Auth and Firestore fail to connect with
+nothing on screen to explain it — the app just sits there signing in forever.
+
+Two changes: `VITE_EMULATOR_HOST` (default `127.0.0.1`) so the client can be
+pointed at the laptop's LAN address, and `host: "0.0.0.0"` on the emulators in
+`firebase.json` so they listen on more than loopback. Phase 2.5 is phone-first;
+testing on a real handset is the normal case here, not an edge one.
+
+```sh
+firebase emulators:start --only auth,firestore --project <id>
+VITE_USE_EMULATORS=true VITE_EMULATOR_HOST=<laptop LAN ip> pnpm dev --host
+```
+
+The emulators now accept connections from anything on the same wifi. They hold
+no real data and no credentials, but it is a deliberate loosening — worth
+knowing before running this on a network you do not trust.
+
+Note: `pnpm test:rules` cannot run while an interactive emulator holds port
+8080. Stop it first.

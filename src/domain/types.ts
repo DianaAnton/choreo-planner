@@ -5,7 +5,14 @@
  * Beats, bars and 8-counts are derived from a BeatGrid, never stored.
  */
 
-export const SCHEMA_VERSION = 1;
+/**
+ * 2: the preset library became the skill library and `ShapeEntrySource.preset`
+ * became `skill` (ADR 0011). Nothing stored needs converting — Phase 6 has not
+ * shipped, so every `shapes[]` in existence is empty — but the bump stops a
+ * phone on last week's cached service worker from opening a choreo whose shapes
+ * reference skills it has never heard of.
+ */
+export const SCHEMA_VERSION = 2;
 
 export type Millis = number;
 export type Id = string;
@@ -49,9 +56,9 @@ export interface Section {
  */
 export type ShapeEntrySource =
   | {
-      kind: 'preset';
-      presetId: Id;
-      /** Copied at insert time so renaming or deleting a preset never
+      kind: 'skill';
+      skillId: Id;
+      /** Copied at insert time so renaming or deleting a skill never
        *  corrupts an existing choreo. */
       nameSnapshot: string;
     }
@@ -67,17 +74,11 @@ export interface ShapeEntry {
   notes?: string;
 }
 
-export interface ShapePreset {
-  id: Id;
-  name: string;
-  /** Free-form grouping (e.g. "invert", "spin"). Open for the same reason as SectionKind. */
-  category?: string;
-  notes?: string;
-  /** Discipline this preset belongs to — 'pole' for now. See DisciplineProfile. */
-  discipline: string;
-  createdAt: number;
-  lastUsedAt?: number;
-}
+/**
+ * `ShapePreset` used to live here. It is now `Skill` in `domain/training.ts`,
+ * a superset in the same collection — one entity, two surfaces: the add-shape
+ * picker and the training screens. See ADR 0011 §1.
+ */
 
 // --- Audio -----------------------------------------------------------------
 

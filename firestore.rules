@@ -20,10 +20,21 @@ service cloud.firestore {
         && request.resource.data.members == resource.data.members;
     }
 
+    // Subcollections do not inherit their parent's rules in rules_version 2 —
+    // each one is matched explicitly, or it is denied by the catch-all below.
     match /users/{uid} {
       allow read, write: if isOwner(uid);
 
-      match /presets/{presetId} {
+      // Was `presets/`. Renamed while it was still empty — see ADR 0011.
+      match /skills/{skillId} {
+        allow read, write: if isOwner(uid);
+      }
+
+      match /sessions/{sessionId} {
+        allow read, write: if isOwner(uid);
+      }
+
+      match /inbox/{itemId} {
         allow read, write: if isOwner(uid);
       }
     }

@@ -26,6 +26,17 @@ const config = {
 export const useEmulators = import.meta.env.VITE_USE_EMULATORS === 'true';
 
 /**
+ * Where the emulator suite is listening. Loopback is right on the laptop and
+ * wrong on a phone: served over the LAN, `127.0.0.1` resolves to the *phone*,
+ * so Auth and Firestore fail to connect with nothing on screen to say why.
+ *
+ * Phase 2.5 is phone-first, so testing on a real handset is the normal case,
+ * not an edge one. Set VITE_EMULATOR_HOST to the laptop's LAN address to point
+ * a phone at it.
+ */
+const emulatorHost = import.meta.env.VITE_EMULATOR_HOST || '127.0.0.1';
+
+/**
  * CI builds with placeholder values to prove the bundle compiles, so a missing
  * config must not throw at module load — it would break the build. Surface it
  * as a warning instead; the first real network call is where it actually fails.
@@ -49,7 +60,7 @@ export function getFirebaseAuth(): Auth {
   if (!authInstance) {
     authInstance = getAuth(getApp());
     if (useEmulators) {
-      connectAuthEmulator(authInstance, 'http://127.0.0.1:9099', { disableWarnings: true });
+      connectAuthEmulator(authInstance, `http://${emulatorHost}:9099`, { disableWarnings: true });
     }
   }
   return authInstance;
@@ -64,7 +75,7 @@ export function getDb(): Firestore {
       localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
     });
     if (useEmulators) {
-      connectFirestoreEmulator(firestoreInstance, '127.0.0.1', 8080);
+      connectFirestoreEmulator(firestoreInstance, emulatorHost, 8080);
     }
   }
   return firestoreInstance;

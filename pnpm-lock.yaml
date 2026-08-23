@@ -20,6 +20,9 @@ importers:
       react-router:
         specifier: ^7.6.0
         version: 7.18.2(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      workbox-window:
+        specifier: ^7.4.1
+        version: 7.4.1
       zustand:
         specifier: ^5.0.0
         version: 5.0.14(@types/react@19.2.17)(react@19.2.8)
@@ -48,6 +51,9 @@ importers:
       firebase-tools:
         specifier: ^15.0.0
         version: 15.25.0(@types/node@24.13.3)
+      globals:
+        specifier: ^17.11.0
+        version: 17.11.0
       prettier:
         specifier: ^3.6.0
         version: 3.9.6
@@ -2752,6 +2758,10 @@ packages:
 
   globals@14.0.0:
     resolution: {integrity: sha512-oahGvuMGQlPw/ivIYBjVSrWAfWLBeku5tpPE2fOPLi+WHffIWbuh2tCjhyQhTBPMf5E9jDEH4FOmTYgYwbKwtQ==}
+    engines: {node: '>=18'}
+
+  globals@17.11.0:
+    resolution: {integrity: sha512-Z2I8hM+PbJDXQDq3Icgpzv+mPdwr68iZUU9d5WW4FuXfDUQfkZaZuvjMv42/5crNyw154+9+VWXbYrUgDXbxNw==}
     engines: {node: '>=18'}
 
   globalthis@1.0.4:
@@ -8019,6 +8029,8 @@ snapshots:
       ini: 2.0.0
 
   globals@14.0.0: {}
+
+  globals@17.11.0: {}
 
   globalthis@1.0.4:
     dependencies:

@@ -13,6 +13,13 @@ interface ImportMetaEnv {
 
   /** "true" points the app at the local emulator suite instead of the cloud. */
   readonly VITE_USE_EMULATORS?: string;
+
+  /**
+   * Where that suite is listening. Defaults to 127.0.0.1; set it to the
+   * laptop's LAN address when testing on a phone, where loopback means the
+   * phone itself.
+   */
+  readonly VITE_EMULATOR_HOST?: string;
 }
 
 interface ImportMeta {
