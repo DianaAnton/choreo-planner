@@ -13,8 +13,8 @@ rewrite. This document describes those seams and the data model.
                              │
           ┌──────────────────▼──────────────────────────┐
           │  features/   audio · waveform · beatgrid ·   │
-          │              sections · shapes · presets ·   │
-          │              playback                        │
+          │              sections · shapes · training ·  │
+          │              playback · pwa                  │
           └────────┬────────────────────────┬───────────┘
                    │                        │
        ┌───────────▼──────────┐   ┌─────────▼─────────────┐
@@ -65,19 +65,25 @@ unit-tested part of the codebase.
 | `Project` | One choreo. Owns `BeatGrid`, audio metadata, sections, shapes. |
 | `Section` | `{ id, label, kind, colorToken, startMs, endMs }`. `kind` is an open string (`verse`, `chorus`, `bridge`, …) so new labels need no code change. |
 | `ShapeEntry` | `{ id, sectionId, startMs, durationMs, source, ... }`. Default `durationMs` = one bar. |
-| `ShapePreset` | Personal, reusable. Lives under the user, not the project, so presets follow you across choreos. |
+| `Skill` | Personal, reusable. Lives under the user, not the project, so it follows you across choreos. Was `ShapePreset`; promoted in [ADR 0011](decisions/0011-training-layer.md) with a ladder, checkpoints and a kind. |
+| `Session` | One day of training: duration, how it felt, which skills it touched. A subcollection, because training history has no upper bound. |
+| `InboxItem` | A captured URL plus what to watch for, promoted to a `Skill` or discarded. |
 
 `ShapeEntry.source` is a discriminated union — this is the **ShapeSource** seam:
 
 ```ts
 type ShapeEntrySource =
-  | { kind: 'preset'; presetId: string; nameSnapshot: string }
+  | { kind: 'skill'; skillId: string; nameSnapshot: string }
   | { kind: 'freeText'; text: string };
-  // later: { kind: 'poseLibrary'; poseId } | { kind: 'videoRef'; ... }
+  // later: { kind: 'videoRef'; ... } | { kind: 'photo'; ... }
 ```
 
-`nameSnapshot` means renaming or deleting a preset never corrupts an existing
+`nameSnapshot` means renaming or deleting a skill never corrupts an existing
 choreo.
+
+Because a shape names a skill, a section's **readiness** is the lowest ladder
+state among the skills its shapes reference. That is derived on read, never
+stored — a stored copy would drift from the truth the moment a skill moved.
 
 ## Persistence
 
@@ -85,7 +91,9 @@ Firestore from day one, single project document with embedded arrays:
 
 ```text
 users/{uid}                        { displayName?, createdAt, schemaVersion }
-users/{uid}/presets/{presetId}     ShapePreset — reusable across projects
+users/{uid}/skills/{skillId}       Skill — reusable across projects (was: presets/)
+users/{uid}/sessions/{sessionId}   Session — training history, grows forever
+users/{uid}/inbox/{itemId}         InboxItem — captured, then promoted or discarded
 projects/{projectId}               Project + sections[] + shapes[]
 ```
 
@@ -99,6 +107,11 @@ for a single editor.
 When real-time collaboration arrives, sections and shapes split into
 subcollections. That is a migration, gated on `schemaVersion`, entirely inside
 `FirestoreProjectRepository` — no feature code changes.
+
+**Training data goes the other way, and for the same reason.** The
+single-document argument rests on the data being bounded; a choreo tops out
+around 49 8-counts. Training history has no bound, so sessions are a
+subcollection. Same reasoning, opposite answer.
 
 Every document carries `ownerId`, an empty `members: {}` map, and
 `schemaVersion` from v1, so sharing and collaboration can be added without a
@@ -117,7 +130,18 @@ interface ProjectRepository {
   remove(id: string): Promise<void>;
 }
 
-interface PresetRepository { /* list · create · update · remove · subscribe */ }
+interface TrainingRepository {   // skills, sessions and inbox under the user
+  subscribeSkills(cb: (s: Skill[]) => void, onError: (e: Error) => void): Unsubscribe;
+  createSkill(input: NewSkill): Promise<Skill>;
+  updateSkill(id: string, patch: SkillPatch): Promise<void>;
+  removeSkill(id: string): Promise<void>;
+  subscribeSessions(sinceDate: string, cb: ..., onError: ...): Unsubscribe;
+  logSession(input: NewSession): Promise<Session>;   // also touches the skills it names
+  subscribeInbox(cb: ..., onError: ...): Unsubscribe;
+  addInboxItem(input: NewInboxItem): Promise<InboxItem>;
+  resolveInboxItem(id: string): Promise<void>;
+  removeInboxItem(id: string): Promise<void>;
+}
 
 interface AudioStore {           // device-local only, never cloud
   put(projectId: string, file: File): Promise<AudioMeta>;
@@ -142,9 +166,10 @@ interface AuthGateway {
 }
 ```
 
-Implementations: `FirestoreProjectRepository`, `FirebaseAuthGateway`, plus
-`InMemoryProjectRepository` / `InMemoryAuthGateway` for tests. Still to come:
-`FirestorePresetRepository` and `HybridAudioStore`.
+Implementations: `FirestoreProjectRepository`, `FirestoreTrainingRepository`,
+`FirebaseAuthGateway`, plus `InMemoryProjectRepository` /
+`InMemoryTrainingRepository` / `InMemoryAuthGateway` for tests. Still to come:
+`HybridAudioStore`.
 
 Concrete classes are named in exactly one place — `src/app/App.tsx`, the
 composition root — and injected downward as props.
@@ -226,7 +251,7 @@ position — not `<audio>.currentTime`, which is too coarse for a beat grid — 
 
 | Seam | v1 implementations | Added later without touching callers |
 | --- | --- | --- |
-| `ShapeSource` | preset, free text | pose library, video ref, photo |
+| `ShapeSource` | skill, free text | video ref, photo |
 | `TimelineLayer` | waveform, grid, sections, shapes, playhead | transitions, levels, notes |
 | `DisciplineProfile` | pole | hoop, silks, floor |
 | `Exporter` | *(none)* | PDF, print sheet, video overlay |

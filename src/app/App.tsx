@@ -3,11 +3,16 @@ import { BrowserRouter, Route, Routes } from 'react-router';
 
 import { FirebaseAuthGateway } from '../repositories/FirebaseAuthGateway';
 import { FirestoreProjectRepository } from '../repositories/FirestoreProjectRepository';
+import { FirestoreTrainingRepository } from '../repositories/FirestoreTrainingRepository';
 import { AuthProvider, useAuth } from '../features/auth';
 import { ProjectsProvider } from '../features/projects';
+import { TrainingProvider } from '../features/training';
+import { UpdatePrompt } from '../features/pwa';
 import { isFirebaseConfigured } from '../lib/firebase';
 import { ProjectPage } from './pages/ProjectPage';
 import { ProjectsPage } from './pages/ProjectsPage';
+import { InboxPage, LogPage, SkillPage, SkillsPage, TodayPage } from './pages/TrainingPage';
+import { POLE } from './registry';
 
 /**
  * Composition root. This is the one layer that may name concrete
@@ -48,6 +53,10 @@ function SignedInApp() {
     () => (user ? new FirestoreProjectRepository(user.uid) : null),
     [user],
   );
+  const training = useMemo(
+    () => (user ? new FirestoreTrainingRepository(user.uid) : null),
+    [user],
+  );
 
   if (status === 'error') {
     return (
@@ -60,7 +69,7 @@ function SignedInApp() {
     );
   }
 
-  if (!repository) {
+  if (!repository || !training) {
     return (
       <main className="shell" aria-busy="true">
         <h1>Choreo Planner</h1>
@@ -71,11 +80,19 @@ function SignedInApp() {
 
   return (
     <ProjectsProvider repository={repository}>
-      <Routes>
-        <Route path="/" element={<ProjectsPage />} />
-        <Route path="/projects/:projectId" element={<ProjectPage />} />
-        <Route path="*" element={<ProjectsPage />} />
-      </Routes>
+      <TrainingProvider repository={training} discipline={POLE.id}>
+        <UpdatePrompt />
+        <Routes>
+          <Route path="/" element={<ProjectsPage />} />
+          <Route path="/projects/:projectId" element={<ProjectPage />} />
+          <Route path="/training" element={<TodayPage />} />
+          <Route path="/training/log" element={<LogPage />} />
+          <Route path="/training/inbox" element={<InboxPage />} />
+          <Route path="/training/skills" element={<SkillsPage />} />
+          <Route path="/training/skills/:skillId" element={<SkillPage />} />
+          <Route path="*" element={<ProjectsPage />} />
+        </Routes>
+      </TrainingProvider>
     </ProjectsProvider>
   );
 }

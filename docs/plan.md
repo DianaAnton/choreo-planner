@@ -71,6 +71,64 @@ duplicate anonymous accounts.
 
 ---
 
+## Phase 2.5 — Training layer
+
+Sequenced here rather than after Phase 7 for one reason: it depends only on
+what Phase 2 already shipped — auth, Firestore, the repository ports, the
+rules. Audio, waveform, beat grid and sections are irrelevant to it. Deferring
+it means the tool that addresses the actual reason training stopped arrives
+last, after the most expensive engineering in the project.
+
+It is also the only phase whose value does not require a finished choreo.
+Rationale in [decisions/0011-training-layer.md](decisions/0011-training-layer.md).
+
+1. **`src/domain/training.ts`** — `Skill`, `Session`, `InboxItem`, the ladder
+   ordinal, and the rules that must not live in components: the WIP cap
+   (at most 3 active quests), the staleness threshold (a skill at `cleanRep`
+   or above, untouched for 42 days, is flagged), metric bests, and week
+   boundaries for the session count. Pure, no framework imports, unit-tested
+   to the standard of `domain/time.ts`.
+
+2. **`TrainingRepository`** — port plus `FirestoreTrainingRepository` and
+   `InMemoryTrainingRepository`. Rename `users/{uid}/presets` to
+   `users/{uid}/skills`, bump `SCHEMA_VERSION`. Extend the rules to the two
+   new subcollections, owner-only, with rules tests covering the queries the
+   screens actually issue — per ADR 0009's lesson that a query whose
+   constraints don't match the rules fails wholesale.
+
+3. **Screens.** Phone-first; this is used standing next to a pole.
+   - *Today* — active quests with next checkpoint and ladder meter; a
+     staleness-sorted practice menu underneath; a session count against a
+     weekly target.
+   - *Skill detail* — ladder, checkpoints, refs, history, kind toggle,
+     activate/deactivate.
+   - *Log* — skill chips, duration, felt, optional per-skill number, one line
+     of note. Target is under ten seconds start to finish; if it isn't, the
+     screen is wrong.
+   - *Inbox* — paste a URL and what to watch for; promote to a skill or
+     discard. Promotion is blocked when three quests are already active, and
+     says so.
+
+4. **Seed** the road to a named goal as a `requires` chain so the path has
+   shape from the first session. Names and deep links only.
+
+5. **Pull the PWA forward from Phase 7.** Manifest, icons, install prompt,
+   offline smoke test. The training screens are the first thing that has to
+   work on a phone in a basement studio, and shipping them without install is
+   shipping them unusable.
+
+**Exit criteria:** log a real open-training session on the phone, offline, and
+watch a ladder state change. Then do it again the following week and see the
+first one still there.
+
+**Risk:** the tracker becomes a substitute for training. Mitigation is scope —
+no analytics, no streaks, no charts, nothing social in this phase. If the Log
+screen takes longer than the warmup, it will not be used, and an unused
+tracker is worse than none because it also lies about the last time you
+trained.
+
+---
+
 ## Phase 3 — Audio and waveform
 
 1. File picker: File System Access API where available, `<input type=file>`
@@ -130,20 +188,33 @@ reads correctly at a glance on a phone screen.
 
 ---
 
-## Phase 6 — Shapes and presets
+## Phase 6 — Shapes and skills
 
-1. Preset CRUD under the user (name, optional tag/category, notes).
-2. Add-shape panel with both routes side by side, as the brief requires:
-   preset picker (searchable, recently used first) and a free-text field.
+Presets became skills in Phase 2.5 (ADR 0011), so this phase reads and writes
+`users/{uid}/skills` rather than a parallel preset library.
+
+1. Skill CRUD under the user — already shipped in Phase 2.5; what remains here
+   is the choreo-side surface.
+2. Add-shape panel with both routes side by side, as the brief requires: a
+   **skill picker** (searchable, most recently used first, reading
+   `users/{uid}/skills`) and a free-text field.
 3. Shape defaults to one 8-count starting at the next bar boundary; duration
    adjustable in bar/half-bar/beat steps, with the 3-second minimum surfaced as
    a warning, not a hard block.
 4. `shapes` timeline layer: blocks inside their section band, labelled.
 5. Shape list per section with inline edit, reorder, delete.
-6. "Promote this free-text note to a preset" — the natural way a preset library
-   actually grows.
+6. **"Promote this free-text note to a skill"** — the natural way the training
+   path grows out of choreographing, rather than the two sitting side by side
+   unconnected.
+7. Register the `skill` `ShapeSource` (ADR 0011 §4). A shape referencing a
+   skill shows that skill's ladder state inline, and a section displays derived
+   readiness — the lowest state among the skills its shapes reference. This is
+   the join that makes the choreo a training goal rather than a separate
+   document.
 
-**Exit criteria:** the *Code Mistake* choreo is fully planned in the tool.
+**Exit criteria:** the *Code Mistake* choreo is fully planned in the tool, *and*
+every shape in it is either a skill you hold cleanly for its bar or a named gap
+on the training path with a checkpoint against it.
 
 ---
 
@@ -154,7 +225,8 @@ reads correctly at a glance on a phone screen.
    needed; `playbackRate` on the source node is fine.
 3. Responsive pass: phone layout (list-first, timeline compact) vs laptop
    (timeline-first). Touch targets ≥44 px, no hover-only affordances.
-4. PWA: manifest, icons, install prompt, offline smoke test with airplane mode.
+4. ~~PWA: manifest, icons, install prompt, offline smoke test.~~ Pulled
+   forward to Phase 2.5 — the training screens are unusable without install.
 5. Keyboard shortcuts on desktop: space, ←/→ nudge, `s` section, `n` shape.
 6. Playwright e2e over the core loop; Lighthouse PWA + a11y check in CI.
 
@@ -178,3 +250,7 @@ Phases 3–6 are the product. Phases 1–2 are overhead that pays for itself the
 first time a deploy breaks. If you want to feel progress sooner, Phase 3 can be
 built against `InMemoryProjectRepository` before Phase 2's Firestore work
 lands — the repository interface exists precisely so that ordering is a choice.
+
+Phase 2.5 sits outside that spine. It shares Phase 2's foundations and needs
+nothing from Phases 3–7, so it ships independently of them — and it is the only
+phase whose output is useful before a single choreo exists.

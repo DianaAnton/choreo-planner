@@ -1,9 +1,15 @@
 import js from '@eslint/js';
+import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   { ignores: ['dist', 'node_modules', 'coverage', 'playwright-report', 'terraform'] },
   js.configs.recommended,
+  {
+    // Build-time scripts run in Node, not the browser.
+    files: ['scripts/**/*.mjs'],
+    languageOptions: { globals: globals.node },
+  },
   ...tseslint.configs.recommended,
   {
     files: ['**/*.{ts,tsx}'],

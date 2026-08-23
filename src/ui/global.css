@@ -283,3 +283,389 @@ label {
   margin: 0.15rem 0 0;
   font-size: 1.05rem;
 }
+
+/* --- Layout helpers ------------------------------------------------------- */
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  align-items: stretch;
+}
+
+.section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+/* Anchors that need to read as buttons — a Link cannot be a <button>. */
+.button-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--tap-target);
+  padding: 0 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-raised);
+  color: var(--fg);
+  text-decoration: none;
+}
+
+.button-link.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-fg);
+  font-weight: 600;
+}
+
+.tabs {
+  display: flex;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.5rem;
+}
+
+.tabs a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: var(--tap-target);
+  padding: 0 0.75rem;
+  border-radius: var(--radius);
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.tabs a:hover {
+  color: var(--fg);
+  background: var(--surface);
+}
+
+.badge {
+  display: inline-block;
+  margin-left: 0.4rem;
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-fg);
+  font-size: 0.7rem;
+  font-weight: 700;
+  vertical-align: middle;
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(1rem + env(safe-area-inset-bottom));
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  max-width: calc(100vw - 2rem);
+  padding: 0.6rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-raised);
+}
+
+.toast button {
+  min-height: 2.25rem;
+  padding: 0 0.7rem;
+}
+
+/* --- The week counter ---------------------------------------------------- */
+
+.week {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.week__count {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.week__count strong {
+  font-size: 1.6rem;
+}
+
+/* --- The ladder ---------------------------------------------------------- */
+
+.ladder {
+  display: flex;
+  gap: 3px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.ladder--static {
+  gap: 3px;
+}
+
+.ladder__rung {
+  flex: 1 1 0;
+  min-width: 12px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--border);
+}
+
+.ladder__rung--filled {
+  background: var(--accent);
+}
+
+.ladder__caption {
+  flex: 0 0 100%;
+  color: var(--muted);
+}
+
+/* Interactive: every rung stays tappable and readable, wrapping on a phone. */
+.ladder__step {
+  flex: 1 1 5.5rem;
+  min-height: 2.5rem;
+  padding: 0 0.4rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+  background: transparent;
+}
+
+.ladder__step--filled {
+  color: var(--fg);
+  border-color: var(--accent);
+}
+
+.ladder__step--current {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-fg);
+  font-weight: 600;
+}
+
+/* --- Quests and skills ---------------------------------------------------- */
+
+.quest-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.quest {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.quest__title {
+  font-weight: 600;
+  font-size: 1.05rem;
+  color: inherit;
+  text-decoration: none;
+}
+
+.quest__title:hover {
+  color: var(--accent);
+}
+
+.quest__next {
+  margin: 0;
+}
+
+.skill-row__link {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  color: inherit;
+  text-decoration: none;
+  min-height: var(--tap-target);
+}
+
+.skill-row__name {
+  font-weight: 600;
+}
+
+.skill-row__link:hover .skill-row__name {
+  color: var(--accent);
+}
+
+/* --- Chips ---------------------------------------------------------------- */
+
+.chip-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.chip-row__number {
+  width: 5rem;
+  flex: 0 0 auto;
+}
+
+.chip {
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: var(--tap-target);
+  padding: 0.25rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--fg);
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.chip--button {
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.9rem;
+}
+
+.chip--on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-fg);
+  font-weight: 600;
+}
+
+.chip--warn {
+  border-color: var(--danger);
+}
+
+.chip__meta {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.chip--on .chip__meta {
+  color: var(--accent-fg);
+  opacity: 0.85;
+}
+
+/* --- Checkpoints, refs, history ------------------------------------------- */
+
+.checkpoints,
+.history {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.checkpoints li,
+.ref {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.checkpoint {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex: 1;
+  min-height: var(--tap-target);
+  color: var(--fg);
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.checkpoint input[type='checkbox'] {
+  width: 1.4rem;
+  height: 1.4rem;
+  min-height: 0;
+  flex: 0 0 auto;
+  accent-color: var(--accent);
+}
+
+.checkpoint--done {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+
+.history li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: baseline;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.ref {
+  flex-wrap: wrap;
+}
+
+.ref a,
+.inbox__url {
+  word-break: break-all;
+}
+
+.inline-form {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.inline-form input {
+  flex: 1 1 10rem;
+  width: auto;
+}
+
+.fieldset {
+  border: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.fieldset legend {
+  padding: 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.log__mark {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.stat-line {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.install-prompt p {
+  margin: 0;
+}
+
+button.small {
+  min-height: 2rem;
+  padding: 0 0.6rem;
+}
