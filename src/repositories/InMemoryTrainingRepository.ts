@@ -76,6 +76,23 @@ export class InMemoryTrainingRepository implements TrainingRepository {
     return this.#putSkill(createSkill(input, this.clock()));
   }
 
+  newSkillId(): Id {
+    return this.#id('sk');
+  }
+
+  async createSkills(inputs: readonly (NewSkill & { id: Id })[]): Promise<Skill[]> {
+    const created = inputs.map(({ id, ...input }) => {
+      const skill: Skill = { ...createSkill(input, this.clock()), id };
+      this.#skills.set(id, skill);
+      return skill;
+    });
+
+    // One emit, not one per skill: the Firestore batch lands as a single
+    // snapshot, and a test that saw thirty would be testing a fiction.
+    this.#emitSkills();
+    return created;
+  }
+
   async updateSkill(id: Id, patch: SkillPatch): Promise<void> {
     const existing = this.#skills.get(id);
     if (!existing) throw new Error(`No skill ${id}`);

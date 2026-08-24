@@ -137,7 +137,7 @@ export function LogSessionForm({ onSaved, onCancel }: Props) {
       <fieldset className="fieldset">
         <legend>What you touched</legend>
         {skills.length === 0 ? (
-          <p className="hint">No skills yet — a session with none still counts.</p>
+          <p className="hint">A session with none still counts.</p>
         ) : (
           <div className="chip-row">
             {[...offered, ...rest].map((skill) => (

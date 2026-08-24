@@ -75,6 +75,21 @@ export interface TrainingRepository {
     onError: (error: Error) => void,
   ): Unsubscribe;
   createSkill(input: NewSkill): Promise<Skill>;
+
+  /**
+   * An id for a skill that has not been written yet. Firestore mints these
+   * client-side, so a whole graph can resolve its `requires` between siblings
+   * before any of it is sent.
+   */
+  newSkillId(): Id;
+
+  /**
+   * Writes many skills in one commit. The seed is ~30 documents: one at a time
+   * is a visible wait on a phone, and a half-written graph leaves `requires`
+   * pointing at skills that were never created.
+   */
+  createSkills(inputs: readonly (NewSkill & { id: Id })[]): Promise<Skill[]>;
+
   updateSkill(id: Id, patch: SkillPatch): Promise<void>;
   removeSkill(id: Id): Promise<void>;
 

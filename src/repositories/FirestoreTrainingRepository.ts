@@ -48,6 +48,9 @@ import type {
  * FirestoreProjectRepository: a `serverTimestamp()` reads back as null until
  * the write lands, and the studio case is offline.
  */
+/** Firestore refuses a batch larger than this. The seed is well under it. */
+const MAX_BATCH_WRITES = 500;
+
 export class FirestoreTrainingRepository implements TrainingRepository {
   constructor(private readonly uid: string) {}
 
@@ -88,6 +91,30 @@ export class FirestoreTrainingRepository implements TrainingRepository {
 
     await setDoc(ref, data);
     return { ...data, id: ref.id };
+  }
+
+  newSkillId(): Id {
+    // `doc()` with no path mints an id locally — no round trip, works offline.
+    return doc(this.#skills()).id;
+  }
+
+  async createSkills(inputs: readonly (NewSkill & { id: Id })[]): Promise<Skill[]> {
+    if (inputs.length === 0) return [];
+    if (inputs.length > MAX_BATCH_WRITES) {
+      throw new Error(
+        `${inputs.length} skills exceeds Firestore's ${MAX_BATCH_WRITES}-write batch limit.`,
+      );
+    }
+
+    const batch = writeBatch(getDb());
+    const created = inputs.map(({ id, ...input }) => {
+      const data = createSkill(input);
+      batch.set(doc(this.#skills(), id), data);
+      return { ...data, id };
+    });
+
+    await batch.commit();
+    return created;
   }
 
   async updateSkill(id: Id, patch: SkillPatch): Promise<void> {

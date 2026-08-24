@@ -189,3 +189,55 @@ describe('InMemoryTrainingRepository', () => {
     });
   });
 });
+
+describe('batched skill creation', () => {
+  let repo: InMemoryTrainingRepository;
+
+  beforeEach(() => {
+    repo = new InMemoryTrainingRepository(() => 1000);
+  });
+
+  it('resolves prerequisites between siblings written in the same commit', async () => {
+    // Ids are minted before anything is written, which is the whole point:
+    // `requires` can point at a skill that does not exist yet.
+    const invertId = repo.newSkillId();
+    const geminiId = repo.newSkillId();
+
+    const created = await repo.createSkills([
+      { id: invertId, name: 'Basic invert', kind: 'quest', discipline: 'pole' },
+      { id: geminiId, name: 'Gemini', kind: 'quest', discipline: 'pole', requires: [invertId] },
+    ]);
+
+    expect(created.map((s) => s.id)).toEqual([invertId, geminiId]);
+    expect(created[1]?.requires).toEqual([invertId]);
+  });
+
+  it('mints a distinct id every call', () => {
+    const ids = [repo.newSkillId(), repo.newSkillId(), repo.newSkillId()];
+    expect(new Set(ids).size).toBe(3);
+  });
+
+  it('emits one update for the whole batch, not one per skill', async () => {
+    const seen = vi.fn();
+    repo.subscribeSkills('pole', seen);
+    seen.mockClear();
+
+    await repo.createSkills(
+      ['a', 'b', 'c'].map((name) => ({
+        id: repo.newSkillId(),
+        name,
+        kind: 'quest' as const,
+        discipline: 'pole',
+      })),
+    );
+
+    // The Firestore batch lands as a single snapshot; a test that saw three
+    // would be testing a fiction.
+    expect(seen).toHaveBeenCalledTimes(1);
+    expect(seen.mock.lastCall?.[0]).toHaveLength(3);
+  });
+
+  it('does nothing for an empty batch', async () => {
+    expect(await repo.createSkills([])).toEqual([]);
+  });
+});

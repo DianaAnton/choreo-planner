@@ -24,7 +24,7 @@ export function InboxScreen() {
 
       {inbox.length === 0 ? (
         <p className="empty">
-          Nothing saved. Paste a link the moment you see it — sorting it out is a different job.
+          Nothing saved yet.
         </p>
       ) : (
         <ul className="stack">
@@ -182,11 +182,9 @@ function PromoteForm({ item, onDone }: { item: InboxItem; onDone(): void }) {
           </button>
         ))}
       </div>
-      <p className="hint">
-        {kind === 'quest'
-          ? `A finite thing with an end state. ${questSlotsLeft} of 3 quest slots free.`
-          : 'Ongoing maintenance — conditioning, spins, holds. No limit on these.'}
-      </p>
+      {kind === 'quest' && (
+        <p className="hint">{questSlotsLeft} of 3 quest slots free</p>
+      )}
 
       {refusal && (
         <p className="notice notice--error" role="alert">

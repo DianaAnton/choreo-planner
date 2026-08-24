@@ -433,3 +433,86 @@ install prompt — a preview is HTTPS, which a LAN dev server is not.
 `firebase-setup.md` said the automatic domains were "all that's needed", which
 is true for production and actively misleading for previews. Corrected there
 and added to `deployment.md`'s gotcha list.
+
+---
+
+## 2026-08-24 — A starting curriculum, and a map instead of a list
+
+Branch: `feat/starting-curriculum-and-skill-map`. Decision in
+[ADR 0012](decisions/0012-ship-a-starting-curriculum.md), which supersedes ADR
+0011 §3.
+
+### What the first real use turned up
+
+Two complaints, one sentence apart: *"a lot of useless text and empty space at
+the same time"* and *"I hate the list view on the phone, I need something I can
+zoom out and get an overview of"*. Both are about the same failure — the screen
+was mostly explanation of a thing that had no content in it.
+
+### The curriculum
+
+ADR 0011 §3 said the app ships no curriculum, and that was wrong in the way
+that matters: it put the entire cost of starting on the moment the screen is
+blank. The seed is now 29 skills — three named goals (Ayesha, Shoulder mount,
+Handspring) with the spins, climbs and conditioning underneath — and every
+quest carries two or three starter checkpoints leaning on the one objective
+test the app already has, "hold it for the bar it would occupy".
+
+Where a shape has a left and a right, both sides are their own checkpoint. One
+strong side is the most common way a skill looks finished and is not.
+
+**Nothing was taken from anyone.** PoleMovebook's `robots.txt` disallows
+`/movepage.html`, `/collection.html` and `/combo.html`, so those were never
+fetched — and nothing from them was needed. Move names are the shared
+vocabulary of the discipline; descriptions, ratings and curation are not, and
+none are reproduced. No reference links are invented.
+
+### The map
+
+`domain/skillGraph.ts` lays the `requires` chain out in bands: prerequisites
+above, what they unlock below. Depth is the **longest** path from a root, not
+the shortest — the shortest would float a node above a prerequisite it has, and
+there is a test for exactly that. Cycles cannot be made through the UI but a
+hand-edited document could, so a back edge contributes nothing rather than
+hanging the tab.
+
+Verified by printing the computed bands rather than by trusting the renderer:
+
+```text
+band 0: Basic climb | Fireman spin
+band 1: Basic invert | Bracket hold | Back hook spin | Chair spin
+band 2: Gemini | Shoulder mount prep | Superman | Attitude spin
+band 3: Butterfly | Jade split | Scorpio | Shoulder mount
+band 4: Extended butterfly | Handspring prep | Brass monkey
+band 5: Ayesha | Handspring
+band 6: Iron X
+bands=7 width=4 edges=18
+```
+
+`SkillMap.tsx` renders it as SVG with a `viewBox` for pan and pinch-zoom
+(Pointer Events, so one code path covers mouse and touch, and
+`setPointerCapture` keeps a drag alive when the finger leaves the element —
+which on a phone it constantly does). Fill shows ladder position, so progress
+is readable when zoomed too far out to read the words. `Fit` is a first-class
+control, not a corner affordance: "zoom out and see the whole thing" is the
+case the screen exists for.
+
+### The text
+
+Six explanatory paragraphs came out of the skill screen alone, plus the long
+empty states. They were written to be helpful and read as padding, pushing the
+actual content below the fold — which is how a screen manages to feel wordy and
+empty at once. The one that stayed is the ladder rung's description, because
+that is the definition of where you are, not an explanation of the mechanism.
+
+### Also
+
+The seed is 29 documents. One at a time is a visible wait on a phone and a
+half-written graph leaves `requires` pointing at nothing, so
+`TrainingRepository` gained `newSkillId()` (Firestore mints ids client-side,
+offline, with no round trip) and a batched `createSkills()`.
+
+### Verified
+
+lint · typecheck · 134 unit tests (113 → 134) · build. The layout was checked
+by printing it, not by looking at it — there is still no browser here.

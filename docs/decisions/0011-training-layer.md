@@ -1,6 +1,7 @@
 # ADR 0011 — The training layer, built on the preset library
 
 **Date:** 2026-08-23 · **Status:** accepted
+**§3's "the app ships no curriculum" is superseded by [ADR 0012](0012-ship-a-starting-curriculum.md).** Everything else stands.
 
 ## Context
 

@@ -669,3 +669,84 @@ button.small {
   min-height: 2rem;
   padding: 0 0.6rem;
 }
+
+/* --- The skill map -------------------------------------------------------- */
+
+.map {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.map__controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.map__canvas {
+  width: 100%;
+  /* Tall on a phone: the graph runs top-to-bottom, so height is the useful
+     axis. Capped against the viewport so the page itself never scrolls
+     horizontally to accommodate it. */
+  height: min(62vh, 34rem);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  /* Without this the browser claims the gesture for scrolling and the pan
+     never reaches the pointer handlers. */
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
+}
+
+.map__canvas:active {
+  cursor: grabbing;
+}
+
+.map__edge {
+  stroke: var(--border);
+  stroke-width: 2;
+}
+
+.map__node {
+  cursor: pointer;
+}
+
+.map__node-bg {
+  fill: var(--bg);
+}
+
+/* Ladder position as a fill: the shape of progress stays readable when you are
+   zoomed too far out to read the words. */
+.map__node-fill {
+  fill: var(--accent);
+  opacity: 0.28;
+}
+
+.map__node-edge {
+  stroke: var(--border);
+  stroke-width: 1.5;
+}
+
+.map__node--active .map__node-edge {
+  stroke: var(--accent);
+  stroke-width: 3;
+}
+
+.map__node-label {
+  fill: var(--fg);
+  font-size: 15px;
+  text-anchor: middle;
+  /* The label is part of the tap target, not a separate one. */
+  pointer-events: none;
+}
+
+.map__node--dim {
+  opacity: 0.25;
+}
+
+.map__loose {
+  margin-top: 0.25rem;
+}
