@@ -50,9 +50,24 @@ now also a robots directive.
 
 **3. The skill map replaces the list as the primary view.** The `requires`
 chain is laid out as a layered graph: prerequisites above, what they unlock
-below, ladder state as the node's fill. Pan and pinch-zoom, tap a node to open
-the skill, and a fit-to-screen control — the "zoom out and see the whole thing"
+below, ladder state as the node's fill. Pan and pinch-zoom, **one tap to open a
+skill**, and a fit-to-screen control — the "zoom out and see the whole thing"
 case is the one it is designed for, not an afterthought.
+
+A first version made the first tap select a node and trace its road, and the
+second tap open it. It was, correctly, called horrible: a mode you can get
+stuck in, on a surface where a tap is also how you pan. There is no selected
+state now.
+
+**Edges are coloured by the node they leave.** The first attempt coloured by
+root lineage, on the theory that a chain should be one colour end to end. That
+measured wrong — every invert, shoulder mount and handspring traces back to
+"Basic climb", so the entire web came out in two colours and the complaint it
+was meant to fix ("hard to follow by the connections") stood. Per-source
+colouring answers the question actually being asked — *which of these came from
+Gemini* — and gives six distinct colours over eighteen edges instead of two.
+Crossings are reduced by barycentre sweeps rather than a single downward pass,
+because a node's position depends on what hangs off it as well as what feeds it.
 
 Layout is computed in `src/domain/skillGraph.ts`, pure and unit-tested, for the
 same reason the training rules are: assigning depths in a graph is where the
@@ -63,7 +78,39 @@ The list survives as a secondary tab. It is still the right shape for "add a
 skill" and for conditioning, which has no prerequisites and therefore no
 position in a graph.
 
-**4. Explanatory text comes out.** Nearly every section carried a `.hint`
+**4. One list, grouped by what a move is.** The list split into Quests and
+Practice: two sections of near-identical rows, which made the screen twice as
+long while saying nothing the rows did not already say. It is one list now,
+grouped by category — inverts, spins, climbs, conditioning, flexibility — with
+kind as a marker on the row. Active quests sit above all of it, because "what
+am I doing" should not be filed under C for climb.
+
+**5. One picture per skill, on its own document.** Recognising a shape is
+faster than reading its name, and the map and list are both scan-first
+surfaces.
+
+Stored as a JPEG data URL on `users/{uid}/skillImages/{skillId}`, downscaled on
+the device to a 400px longest edge and capped at 150 KB — comfortably inside
+Firestore's 1 MB document limit even after base64's third. **Not on the skill
+document**: the skills query runs on every training screen, and thirty embedded
+images would be megabytes on mobile data before anything rendered. The image
+document is read only when a skill is opened.
+
+Firebase Storage is the right answer at real scale and is not needed at this
+one. It would mean a bucket in Terraform, a rules file, upload plumbing, and
+the first per-GB cost in the project — for images that exist to be recognised
+at a glance. This decision does not block moving there later; it is a different
+collection, not a different schema.
+
+Deleting a skill deletes its picture in the same batch. An orphaned image
+document is storage nothing will ever read again.
+
+Images may be photographs the user takes or reference pictures they save.
+Saving someone else's picture into your own account is a copy rather than the
+link ADR 0011 preferred — that is a real distinction, and it is the user's to
+make on a private page. Nothing here shares them onward.
+
+**6. Explanatory text comes out.** Nearly every section carried a `.hint`
 paragraph explaining the mechanism. Written to be helpful, they read as padding
 on a phone and pushed the actual content below the fold — which is how a screen
 manages to feel wordy and empty at the same time. The rules stay; the essays

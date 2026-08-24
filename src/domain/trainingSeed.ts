@@ -41,7 +41,12 @@ export const STARTING_PATH: readonly SeedSkill[] = [
     name: 'Fireman spin',
     kind: 'quest',
     category: 'spin',
-    checkpoints: ['Spin down under control, both sides', 'Land without dropping onto the foot'],
+    checkpoints: [
+      'Spin down under control, both sides',
+      'Land without dropping onto the foot',
+      'Two rotations before the feet touch',
+      'Point the toes the whole way down',
+    ],
   },
   {
     key: 'backhook',
@@ -49,7 +54,12 @@ export const STARTING_PATH: readonly SeedSkill[] = [
     kind: 'quest',
     category: 'spin',
     requires: ['fireman'],
-    checkpoints: ['Two full rotations, both sides', 'Legs stay together the whole way down'],
+    checkpoints: [
+      'Two full rotations, both sides',
+      'Legs stay together the whole way down',
+      'Enter without a run-up',
+      'Hold the shape rather than falling into it',
+    ],
   },
   {
     key: 'chair',
@@ -57,7 +67,12 @@ export const STARTING_PATH: readonly SeedSkill[] = [
     kind: 'quest',
     category: 'spin',
     requires: ['fireman'],
-    checkpoints: ['Hold the shape for one full rotation', 'Both sides'],
+    checkpoints: [
+      'Hold the shape for one full rotation',
+      'Both sides',
+      'Knees stay level with each other',
+      'No grip readjustment mid-spin',
+    ],
   },
   {
     key: 'attitude',
@@ -65,7 +80,12 @@ export const STARTING_PATH: readonly SeedSkill[] = [
     kind: 'quest',
     category: 'spin',
     requires: ['backhook'],
-    checkpoints: ['Shape holds through the whole spin', 'Both sides'],
+    checkpoints: [
+      'Shape holds through the whole spin',
+      'Both sides',
+      'Back leg turned out, not just bent',
+      'Head and chest stay lifted',
+    ],
   },
 
   // --- Climbs: everything above the floor depends on these ------------------
@@ -74,7 +94,12 @@ export const STARTING_PATH: readonly SeedSkill[] = [
     name: 'Basic climb',
     kind: 'quest',
     category: 'climb',
-    checkpoints: ['Three climbs in a row without resting', 'Climb on the weaker side'],
+    checkpoints: [
+      'Three climbs in a row without resting',
+      'Climb on the weaker side',
+      'Reach the top of the pole',
+      'Climb without the feet slipping on the first pull',
+    ],
   },
   {
     key: 'bracket',
@@ -82,7 +107,12 @@ export const STARTING_PATH: readonly SeedSkill[] = [
     kind: 'quest',
     category: 'climb',
     requires: ['climb'],
-    checkpoints: ['Hold for one 8-count', 'Both sides'],
+    checkpoints: [
+      'Hold for one 8-count',
+      'Both sides',
+      'Hips stay square to the pole',
+      'Enter from a climb rather than from the floor',
+    ],
   },
 
   // --- The invert line: the road to an Ayesha -------------------------------
@@ -96,6 +126,8 @@ export const STARTING_PATH: readonly SeedSkill[] = [
       'Invert from the floor with no swing',
       'Hold inverted crucifix for one 8-count',
       'Invert on the weaker side',
+      'Five controlled inverts in a row',
+      'Lower out slowly instead of dropping',
     ],
   },
   {
@@ -104,7 +136,13 @@ export const STARTING_PATH: readonly SeedSkill[] = [
     kind: 'quest',
     category: 'invert',
     requires: ['invert'],
-    checkpoints: ['Hold for one 8-count', 'Both sides', 'Enter without the shoulder collapsing'],
+    checkpoints: [
+      'Hold for one 8-count',
+      'Both sides',
+      'Enter without the shoulder collapsing',
+      'Top leg straight',
+      'Let go with both hands for 3 seconds',
+    ],
   },
   {
     key: 'scorpio',
@@ -112,7 +150,12 @@ export const STARTING_PATH: readonly SeedSkill[] = [
     kind: 'quest',
     category: 'invert',
     requires: ['gemini'],
-    checkpoints: ['Hold for one 8-count', 'Both sides'],
+    checkpoints: [
+      'Hold for one 8-count',
+      'Both sides',
+      'Back leg reaches the pole',
+      'Chest stays open rather than folding',
+    ],
   },
   {
     key: 'jade',
@@ -120,7 +163,12 @@ export const STARTING_PATH: readonly SeedSkill[] = [
     kind: 'quest',
     category: 'invert',
     requires: ['gemini'],
-    checkpoints: ['Hold for one 8-count', 'Both sides', 'Back leg straight, not bent'],
+    checkpoints: [
+      'Hold for one 8-count',
+      'Both sides',
+      'Back leg straight, not bent',
+      'Split line looks even in a photo',
+    ],
   },
   {
     key: 'superman',
@@ -128,7 +176,12 @@ export const STARTING_PATH: readonly SeedSkill[] = [
     kind: 'quest',
     category: 'invert',
     requires: ['invert'],
-    checkpoints: ['Hold for one 8-count', 'Both sides'],
+    checkpoints: [
+      'Hold for one 8-count',
+      'Both sides',
+      'Hips stay in contact with the pole',
+      'Enter without kicking the bottom leg',
+    ],
   },
   {
     key: 'butterfly',
@@ -136,7 +189,13 @@ export const STARTING_PATH: readonly SeedSkill[] = [
     kind: 'quest',
     category: 'invert',
     requires: ['gemini'],
-    checkpoints: ['Hold for one 8-count', 'Both sides', 'Bottom arm stays straight'],
+    checkpoints: [
+      'Hold for one 8-count',
+      'Both sides',
+      'Bottom arm stays straight',
+      'Shoulder stays packed, not shrugged',
+      'Enter slowly rather than dropping in',
+    ],
   },
   {
     key: 'extended-butterfly',
@@ -144,7 +203,13 @@ export const STARTING_PATH: readonly SeedSkill[] = [
     kind: 'quest',
     category: 'invert',
     requires: ['butterfly'],
-    checkpoints: ['Hold for one 8-count', 'Both sides', 'Hips stack over the shoulders'],
+    checkpoints: [
+      'Hold for one 8-count',
+      'Both sides',
+      'Hips stack over the shoulders',
+      'Both legs straight at the same time',
+      'Come back down to butterfly under control',
+    ],
   },
   {
     key: 'ayesha',
@@ -156,6 +221,8 @@ export const STARTING_PATH: readonly SeedSkill[] = [
       'Hold for one 8-count on the strong side',
       'Hold for one 8-count on the weaker side',
       'Enter from a climb rather than from the floor',
+      'Straight bottom arm throughout',
+      'Film it and agree with what you see',
     ],
   },
 
@@ -166,7 +233,12 @@ export const STARTING_PATH: readonly SeedSkill[] = [
     kind: 'quest',
     category: 'invert',
     requires: ['invert'],
-    checkpoints: ['Deadlift both knees to the chest', 'Five controlled reps, both sides'],
+    checkpoints: [
+      'Deadlift both knees to the chest',
+      'Five controlled reps, both sides',
+      'No jump off the floor',
+      'Neck stays off the pole',
+    ],
   },
   {
     key: 'shoulder-mount',
@@ -178,6 +250,7 @@ export const STARTING_PATH: readonly SeedSkill[] = [
       'Deadlift with no jump, strong side',
       'Deadlift with no jump, weaker side',
       'Hold the top position for one 8-count',
+      'Three in a row without resting',
     ],
   },
   {
@@ -186,7 +259,12 @@ export const STARTING_PATH: readonly SeedSkill[] = [
     kind: 'quest',
     category: 'invert',
     requires: ['shoulder-mount'],
-    checkpoints: ['Hold for one 8-count', 'Both sides'],
+    checkpoints: [
+      'Hold for one 8-count',
+      'Both sides',
+      'Both hands off for 3 seconds',
+      'Enter from a shoulder mount rather than from an invert',
+    ],
   },
 
   // --- The handspring line ---------------------------------------------------
@@ -196,7 +274,12 @@ export const STARTING_PATH: readonly SeedSkill[] = [
     kind: 'quest',
     category: 'invert',
     requires: ['butterfly'],
-    checkpoints: ['Both feet leave the pole for 3 seconds', 'Bottom arm stays straight'],
+    checkpoints: [
+      'Both feet leave the pole for 3 seconds',
+      'Bottom arm stays straight',
+      'Both sides',
+      'Hips stay above the shoulders',
+    ],
   },
   {
     key: 'handspring',
@@ -208,6 +291,8 @@ export const STARTING_PATH: readonly SeedSkill[] = [
       'Hold for one 8-count on the strong side',
       'Hold for one 8-count on the weaker side',
       'Enter without kicking',
+      'Straight bottom arm throughout',
+      'Film it and agree with what you see',
     ],
   },
   {
@@ -216,7 +301,12 @@ export const STARTING_PATH: readonly SeedSkill[] = [
     kind: 'quest',
     category: 'invert',
     requires: ['handspring'],
-    checkpoints: ['Hold for one 8-count', 'Legs stay level with the hips'],
+    checkpoints: [
+      'Hold for one 8-count',
+      'Legs stay level with the hips',
+      'Both sides',
+      'Enter from a handspring under control',
+    ],
   },
 
   // --- Conditioning: uncapped, and where the "ten minutes spare" menu comes

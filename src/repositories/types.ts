@@ -11,6 +11,7 @@ import type {
   NewSkillInput,
   Session,
   Skill,
+  SkillImage,
 } from '../domain/training';
 import type { AudioMeta, Id, Project, ProjectSummary } from '../domain/types';
 
@@ -112,6 +113,20 @@ export interface TrainingRepository {
    */
   logSession(input: NewSession, skills: readonly Skill[]): Promise<Session>;
   removeSession(id: Id): Promise<void>;
+
+  /**
+   * The skill's picture, on its own document and read only when a skill is
+   * opened — the skills query runs on every training screen and must not carry
+   * thirty images with it.
+   */
+  subscribeSkillImage(
+    skillId: Id,
+    onChange: (image: SkillImage | null) => void,
+    onError: (error: Error) => void,
+  ): Unsubscribe;
+  /** `dataUrl` must already be downscaled; see `toStorableImage`. */
+  setSkillImage(skillId: Id, dataUrl: string): Promise<void>;
+  removeSkillImage(skillId: Id): Promise<void>;
 
   subscribeInbox(
     onChange: (items: InboxItem[]) => void,

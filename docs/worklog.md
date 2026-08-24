@@ -512,7 +512,57 @@ half-written graph leaves `requires` pointing at nothing, so
 `TrainingRepository` gained `newSkillId()` (Firestore mints ids client-side,
 offline, with no round trip) and a batched `createSkills()`.
 
+### Second round, same session: four things the first version got wrong
+
+Feedback on the map and list, all of it fair.
+
+**The two-tap node was horrible.** Tap to select and trace the road, tap again
+to open. A mode you can get stuck in, on a surface where a tap is also how you
+pan. One tap opens now; there is no selected state at all.
+
+**Colouring by root lineage measured wrong.** The theory was that a chain
+should be one colour end to end. Printing the computed layout showed why it
+fails here: every invert, shoulder mount and handspring traces back to "Basic
+climb", so the whole web came out in **two** colours and the complaint it was
+meant to fix stood. Edges are coloured by the node they *leave* now — which is
+the question actually being asked, *which of these came from Gemini* — giving
+six distinct colours over eighteen edges. The `lineage` field and its tests
+were deleted rather than left as dead code.
+
+Crossings also got barycentre sweeps instead of one downward pass: a node's
+position depends on what hangs off it as well as what feeds it.
+
+**Quests and Practice were two sections of near-identical rows**, which made
+the screen twice as long while saying nothing the rows did not. One list now,
+grouped by category, with kind as a marker. Active quests sit above all of it.
+
+**Checkpoints went from 2–3 to 4–5 per quest** — 86 across 20 quests.
+
+### Pictures
+
+One per skill, a JPEG data URL on `users/{uid}/skillImages/{skillId}`,
+downscaled on the device to a 400 px longest edge and capped at 150 KB.
+
+Deliberately **not** on the skill document: the skills query runs on every
+training screen, and thirty embedded images would be megabytes on mobile data
+before anything rendered. The image document is read only when a skill is
+opened. Deleting a skill deletes its picture in the same batch.
+
+Firebase Storage is the right answer at real scale and is not needed at this
+one — a bucket in Terraform, a rules file, upload plumbing and the first
+per-GB cost in the project, for images that exist to be recognised at a glance.
+Moving there later is a different collection, not a different schema.
+
+### The method that caught the colour bug
+
+Printing the computed layout, rather than trusting the renderer or waiting to
+look at it. The band listing showed `lineages=2` immediately; no amount of
+staring at the source would have. Worth repeating for anything where the code
+is a picture and there is no browser to look at it in.
+
 ### Verified
 
-lint · typecheck · 134 unit tests (113 → 134) · build. The layout was checked
-by printing it, not by looking at it — there is still no browser here.
+lint · typecheck · 141 unit tests (113 → 141) · 26 rules tests (24 → 26) ·
+build. Layout and colour distribution checked by printing them. Still no
+browser here: panning, pinch-zoom and whether the nodes are legible need a
+thumb.

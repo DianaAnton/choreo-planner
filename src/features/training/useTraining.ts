@@ -22,7 +22,12 @@ import {
 import { STARTING_PATH, inPrerequisiteOrder } from '../../domain/trainingSeed';
 import type { Id } from '../../domain/types';
 import { newId } from '../../lib/ids';
-import type { NewInboxItem, NewSession, NewSkill } from '../../repositories/types';
+import type {
+  NewInboxItem,
+  NewSession,
+  NewSkill,
+  TrainingRepository,
+} from '../../repositories/types';
 import { TrainingContext } from './TrainingContext';
 
 export interface TrainingActions {
@@ -54,6 +59,8 @@ export interface TrainingActions {
 }
 
 export interface TrainingView {
+  /** Exposed for the image panel, which subscribes to one document of its own. */
+  repository: TrainingRepository;
   skills: Skill[];
   sessions: Session[];
   inbox: InboxItem[];
@@ -181,6 +188,7 @@ export function useTraining(): TrainingView {
 
   return useMemo<TrainingView>(
     () => ({
+      repository,
       skills,
       sessions,
       inbox,
@@ -196,6 +204,6 @@ export function useTraining(): TrainingView {
       questSlotsLeft: activeQuestSlotsLeft(skills),
       actions,
     }),
-    [skills, sessions, inbox, loading, error, discipline, now, today, actions],
+    [repository, skills, sessions, inbox, loading, error, discipline, now, today, actions],
   );
 }

@@ -61,39 +61,71 @@ export function SkillsScreen() {
   );
 }
 
+/**
+ * One list, grouped by what the move *is* rather than split into Quests and
+ * Practice — two sections of near-identical rows made the screen look twice as
+ * long as it was and said nothing the rows did not already say. Kind is a
+ * marker on the row now.
+ *
+ * Active quests come first regardless of category: they are the answer to "what
+ * am I doing", and burying them under C-for-climb was silly.
+ */
 function SkillList({ skills }: { skills: Skill[] }) {
-  const quests = skills.filter((skill) => skill.kind === 'quest').sort(activeFirst);
-  const practice = skills.filter((skill) => skill.kind === 'practice');
+  const active = skills.filter((skill) => skill.isActive);
+  const rest = skills.filter((skill) => !skill.isActive);
+
+  const groups = new Map<string, Skill[]>();
+  for (const skill of rest) {
+    const key = skill.category ?? 'other';
+    groups.set(key, [...(groups.get(key) ?? []), skill]);
+  }
+
+  const ordered = [...groups.entries()].sort(([a], [b]) => {
+    // Conditioning and flexibility last: they are the things you do around the
+    // thing you came to do.
+    const rank = (key: string) => (key === 'conditioning' ? 1 : key === 'flexibility' ? 2 : 0);
+    return rank(a) - rank(b) || a.localeCompare(b);
+  });
 
   return (
     <div className="stack">
-      {quests.length > 0 && (
+      {active.length > 0 && (
         <section className="stack">
-          <h2>Quests</h2>
+          <h2>Working on</h2>
           <ul className="stack">
-            {quests.map((skill) => (
+            {active.map((skill) => (
               <SkillRow key={skill.id} skill={skill} />
             ))}
           </ul>
         </section>
       )}
 
-      {practice.length > 0 && (
-        <section className="stack">
-          <h2>Practice</h2>
+      {ordered.map(([category, members]) => (
+        <section key={category} className="stack">
+          <h2>{label(category)}</h2>
           <ul className="stack">
-            {practice.map((skill) => (
-              <SkillRow key={skill.id} skill={skill} />
-            ))}
+            {[...members]
+              .sort((a, b) => a.name.localeCompare(b.name))
+              .map((skill) => (
+                <SkillRow key={skill.id} skill={skill} />
+              ))}
           </ul>
         </section>
-      )}
+      ))}
     </div>
   );
 }
 
-function activeFirst(a: Skill, b: Skill): number {
-  return Number(b.isActive) - Number(a.isActive);
+function label(category: string): string {
+  const known: Record<string, string> = {
+    invert: 'Inverts and holds',
+    spin: 'Spins',
+    climb: 'Climbs',
+    conditioning: 'Conditioning',
+    flexibility: 'Flexibility',
+    other: 'Everything else',
+  };
+  return known[category] ?? category[0]?.toUpperCase() + category.slice(1);
 }
 
 function SkillRow({ skill }: { skill: Skill }) {
@@ -106,13 +138,16 @@ function SkillRow({ skill }: { skill: Skill }) {
         <span className="skill-row__name">
           {skill.name}
           {skill.isActive && <span className="badge">active</span>}
+          {skill.kind === 'practice' && <span className="badge badge--quiet">practice</span>}
         </span>
         {skill.kind === 'quest' ? (
           <LadderMeter state={ladderOf(skill)} />
         ) : (
-          <span className="muted small">
-            {skill.metric ? `best ${skill.metric.best} ${skill.metric.unit}` : 'practice'}
-          </span>
+          skill.metric && (
+            <span className="muted small">
+              best {skill.metric.best} {skill.metric.unit}
+            </span>
+          )
         )}
         <span className="muted small">
           {skill.kind === 'quest' && total > 0 && `${done}/${total} · `}

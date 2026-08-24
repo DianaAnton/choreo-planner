@@ -84,47 +84,76 @@ function depths(byId: ReadonlyMap<Id, Skill>): Map<Id, number> {
 }
 
 /**
- * Order within each band, top band first, so a node sits near the parents that
- * point at it. One downward pass — not optimal crossing reduction, which is
- * NP-hard and overkill for a graph this size, but enough that the chains read
- * as chains.
+ * Order within each band, by the barycentre method: repeatedly place a node at
+ * the average position of its neighbours in the adjacent band, alternating
+ * downward and upward.
+ *
+ * Minimising edge crossings exactly is NP-hard. This is the standard heuristic
+ * and it is what turns "hard to follow by the connections" into chains that
+ * read as chains — one downward pass was not enough, because a node's position
+ * also depends on what hangs off it.
  */
+const SWEEPS = 4;
+
 function orderBands(
   bands: Map<number, Id[]>,
   byId: ReadonlyMap<Id, Skill>,
   bandCount: number,
+  children: ReadonlyMap<Id, Id[]>,
 ): Map<Id, number> {
   const order = new Map<Id, number>();
 
+  // Seed alphabetically so the result is stable between renders rather than
+  // depending on Map iteration order.
   for (let depth = 0; depth < bandCount; depth += 1) {
-    const band = bands.get(depth) ?? [];
-
-    const positioned = [...band].sort((a, b) => {
-      const parentA = meanParentOrder(a, byId, order);
-      const parentB = meanParentOrder(b, byId, order);
-      if (parentA !== parentB) return parentA - parentB;
-      // Name is the tie-break so the layout is stable between renders rather
-      // than reshuffling on every state change.
-      return (byId.get(a)?.name ?? '').localeCompare(byId.get(b)?.name ?? '');
-    });
-
-    positioned.forEach((id, index) => order.set(id, index));
+    const band = [...(bands.get(depth) ?? [])].sort((a, b) =>
+      (byId.get(a)?.name ?? '').localeCompare(byId.get(b)?.name ?? ''),
+    );
+    band.forEach((id, index) => order.set(id, index));
   }
+
+  const neighboursOf = (id: Id, up: boolean): Id[] =>
+    up ? [...(byId.get(id)?.requires ?? [])] : [...(children.get(id) ?? [])];
+
+  const sweep = (up: boolean) => {
+    const depths = up
+      ? [...Array(bandCount).keys()]
+      : [...Array(bandCount).keys()].reverse();
+
+    for (const depth of depths) {
+      const band = [...(bands.get(depth) ?? [])];
+
+      const positioned = band.sort((a, b) => {
+        const meanA = meanNeighbourOrder(a, neighboursOf(a, up), order);
+        const meanB = meanNeighbourOrder(b, neighboursOf(b, up), order);
+        if (meanA !== meanB) return meanA - meanB;
+        // Name breaks ties so a node with no neighbours in the adjacent band
+        // does not drift on every sweep.
+        return (byId.get(a)?.name ?? '').localeCompare(byId.get(b)?.name ?? '');
+      });
+
+      positioned.forEach((id, index) => order.set(id, index));
+    }
+  };
+
+  for (let pass = 0; pass < SWEEPS; pass += 1) sweep(pass % 2 === 0);
 
   return order;
 }
 
-function meanParentOrder(
+function meanNeighbourOrder(
   id: Id,
-  byId: ReadonlyMap<Id, Skill>,
+  neighbours: readonly Id[],
   order: ReadonlyMap<Id, number>,
 ): number {
-  const parents = (byId.get(id)?.requires ?? [])
-    .map((requiredId) => order.get(requiredId))
+  const positions = neighbours
+    .map((neighbourId) => order.get(neighbourId))
     .filter((position): position is number => position !== undefined);
 
-  if (parents.length === 0) return Number.POSITIVE_INFINITY;
-  return parents.reduce((total, position) => total + position, 0) / parents.length;
+  // No neighbours in that direction: hold position rather than sorting to one
+  // end, which would drag roots away from what descends from them.
+  if (positions.length === 0) return order.get(id) ?? 0;
+  return positions.reduce((total, position) => total + position, 0) / positions.length;
 }
 
 export function layoutSkillGraph(skills: readonly Skill[]): SkillGraph {
@@ -153,7 +182,13 @@ export function layoutSkillGraph(skills: readonly Skill[]): SkillGraph {
   }
 
   const bandCount = bands.size === 0 ? 0 : Math.max(...bands.keys()) + 1;
-  const orderById = orderBands(bands, inGraph, bandCount);
+
+  const children = new Map<Id, Id[]>();
+  for (const edge of edges) {
+    children.set(edge.from, [...(children.get(edge.from) ?? []), edge.to]);
+  }
+
+  const orderById = orderBands(bands, inGraph, bandCount, children);
 
   const nodes: GraphNode[] = [...depthById].map(([id, depth]) => ({
     id,

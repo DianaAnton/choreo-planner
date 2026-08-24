@@ -180,3 +180,41 @@ describe('the shipped curriculum, laid out', () => {
     }
   });
 });
+
+describe('crossing reduction', () => {
+  it('is deterministic across runs', () => {
+    // The barycentre sweeps must not depend on Map iteration order, or the map
+    // reshuffles every time a skill is touched.
+    const skills = [
+      skill('r1', [], 'Root one'),
+      skill('r2', [], 'Root two'),
+      skill('a', ['r2'], 'Alpha'),
+      skill('b', ['r1'], 'Bravo'),
+      skill('c', ['r1', 'r2'], 'Charlie'),
+    ];
+
+    const run = () =>
+      layoutSkillGraph(skills)
+        .nodes.map((n) => `${n.id}@${n.depth}:${n.order}`)
+        .sort()
+        .join(',');
+
+    expect(run()).toBe(run());
+    expect(run()).toBe(run());
+  });
+
+  it('pulls a child towards the parent it hangs off', () => {
+    // r1 is left, r2 is right. Their children should not end up swapped.
+    const graph = layoutSkillGraph([
+      skill('r1', [], 'AAA'),
+      skill('r2', [], 'ZZZ'),
+      skill('childOfR1', ['r1'], 'ZZZ child'),
+      skill('childOfR2', ['r2'], 'AAA child'),
+    ]);
+
+    const order = (id: string) => graph.nodes.find((n) => n.id === id)?.order ?? -1;
+    expect(order('r1')).toBeLessThan(order('r2'));
+    // Without barycentre ordering these would sort alphabetically and cross.
+    expect(order('childOfR1')).toBeLessThan(order('childOfR2'));
+  });
+});

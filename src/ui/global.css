@@ -707,7 +707,33 @@ button.small {
 
 .map__edge {
   stroke: var(--border);
-  stroke-width: 2;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+
+/* Lineage palette. Each chain keeps one hue from its root all the way down, so
+   a line can be followed by colour where crossings make geometry ambiguous.
+   Distinguishable without relying on hue alone — the arrowheads and the
+   layout carry the direction. */
+.map__lineage-0 { --line: #d94f8c; }
+.map__lineage-1 { --line: #4fb3d9; }
+.map__lineage-2 { --line: #d9a54f; }
+.map__lineage-3 { --line: #7fd94f; }
+.map__lineage-4 { --line: #a44fd9; }
+.map__lineage-5 { --line: #d9704f; }
+
+.map__edge.map__lineage-0,
+.map__edge.map__lineage-1,
+.map__edge.map__lineage-2,
+.map__edge.map__lineage-3,
+.map__edge.map__lineage-4,
+.map__edge.map__lineage-5 {
+  stroke: var(--line);
+  opacity: 0.75;
+}
+
+.map__arrow {
+  fill: var(--line);
 }
 
 .map__node {
@@ -721,13 +747,14 @@ button.small {
 /* Ladder position as a fill: the shape of progress stays readable when you are
    zoomed too far out to read the words. */
 .map__node-fill {
-  fill: var(--accent);
-  opacity: 0.28;
+  fill: var(--line, var(--accent));
+  opacity: 0.3;
 }
 
 .map__node-edge {
-  stroke: var(--border);
+  stroke: var(--line, var(--border));
   stroke-width: 1.5;
+  opacity: 0.7;
 }
 
 .map__node--active .map__node-edge {
@@ -743,10 +770,22 @@ button.small {
   pointer-events: none;
 }
 
-.map__node--dim {
-  opacity: 0.25;
-}
-
 .map__loose {
   margin-top: 0.25rem;
+}
+
+/* --- Skill picture -------------------------------------------------------- */
+
+.skill-image {
+  display: block;
+  width: 100%;
+  max-width: 22rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+
+.badge--quiet {
+  background: var(--surface-raised);
+  color: var(--muted);
+  font-weight: 600;
 }

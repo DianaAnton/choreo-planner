@@ -12,6 +12,7 @@ import {
   type Skill,
 } from '../../domain/training';
 import { LadderMeter } from './LadderMeter';
+import { SkillImagePanel } from './SkillImagePanel';
 import { useTraining } from './useTraining';
 
 interface Props {
@@ -101,6 +102,8 @@ export function SkillDetail({ skill }: Props) {
       <Checkpoints skill={skill} />
 
       {(skill.kind === 'practice' || skill.metric) && <Metric skill={skill} />}
+
+      <SkillImagePanel skill={skill} />
 
       <Refs skill={skill} />
 

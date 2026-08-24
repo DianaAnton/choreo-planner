@@ -241,3 +241,57 @@ describe('batched skill creation', () => {
     expect(await repo.createSkills([])).toEqual([]);
   });
 });
+
+describe('skill images', () => {
+  let repo: InMemoryTrainingRepository;
+
+  beforeEach(() => {
+    repo = new InMemoryTrainingRepository(() => 1000);
+  });
+
+  const tiny = 'data:image/jpeg;base64,/9j/4AAQ';
+
+  it('stores and streams a picture for one skill', async () => {
+    const skill = await repo.createSkill(quest);
+    const seen = vi.fn();
+    repo.subscribeSkillImage(skill.id, seen);
+    expect(seen).toHaveBeenCalledWith(null);
+
+    await repo.setSkillImage(skill.id, tiny);
+    expect(seen.mock.lastCall?.[0]).toEqual({ dataUrl: tiny, updatedAt: 1000 });
+  });
+
+  it('refuses one that would not fit on a Firestore document', async () => {
+    const skill = await repo.createSkill(quest);
+    const huge = `data:image/jpeg;base64,${'A'.repeat(200_000)}`;
+    await expect(repo.setSkillImage(skill.id, huge)).rejects.toThrow(/too large/);
+  });
+
+  it('refuses something that is not an image at all', async () => {
+    const skill = await repo.createSkill(quest);
+    await expect(repo.setSkillImage(skill.id, 'javascript:alert(1)')).rejects.toThrow();
+  });
+
+  it('deletes the picture with the skill rather than orphaning it', async () => {
+    const skill = await repo.createSkill(quest);
+    await repo.setSkillImage(skill.id, tiny);
+
+    const seen = vi.fn();
+    repo.subscribeSkillImage(skill.id, seen);
+    await repo.removeSkill(skill.id);
+
+    expect(seen.mock.lastCall?.[0]).toBeNull();
+  });
+
+  it('keeps one skill’s picture out of another’s subscription', async () => {
+    const a = await repo.createSkill(quest);
+    const b = await repo.createSkill({ ...quest, name: 'Other' });
+
+    const seenB = vi.fn();
+    repo.subscribeSkillImage(b.id, seenB);
+    seenB.mockClear();
+
+    await repo.setSkillImage(a.id, tiny);
+    expect(seenB).not.toHaveBeenCalled();
+  });
+});

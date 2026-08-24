@@ -319,6 +319,26 @@ describe('inbox', () => {
   });
 });
 
+describe('skill images', () => {
+  it('lets a user store and replace their own', async () => {
+    const db = testEnv.authenticatedContext(ALICE).firestore();
+    await assertSucceeds(
+      setDoc(doc(db, `users/${ALICE}/skillImages/ayesha`), {
+        dataUrl: 'data:image/jpeg;base64,/9j/4AAQ',
+        updatedAt: 1,
+      }),
+    );
+  });
+
+  it("denies another user's images", async () => {
+    const db = testEnv.authenticatedContext(BOB).firestore();
+    await assertFails(getDoc(doc(db, `users/${ALICE}/skillImages/ayesha`)));
+    await assertFails(
+      setDoc(doc(db, `users/${ALICE}/skillImages/planted`), { dataUrl: 'x', updatedAt: 1 }),
+    );
+  });
+});
+
 describe('the collection the presets used to live in', () => {
   it('is denied outright, so a stale build cannot keep writing to it', async () => {
     // Renamed to `skills/` in ADR 0011 while it was still empty. Nothing should

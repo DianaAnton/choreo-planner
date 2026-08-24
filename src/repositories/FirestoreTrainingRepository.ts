@@ -17,12 +17,14 @@ import {
   createInboxItem,
   createSession,
   createSkill,
+  isStorableImage,
   skillFromInboxItem,
   touchesForSession,
   type DateKey,
   type InboxItem,
   type Session,
   type Skill,
+  type SkillImage,
 } from '../domain/training';
 import type { Id } from '../domain/types';
 import { getDb } from '../lib/firebase';
@@ -64,6 +66,10 @@ export class FirestoreTrainingRepository implements TrainingRepository {
 
   #inbox() {
     return collection(getDb(), 'users', this.uid, 'inbox');
+  }
+
+  #images() {
+    return collection(getDb(), 'users', this.uid, 'skillImages');
   }
 
   // --- Skills --------------------------------------------------------------
@@ -122,10 +128,37 @@ export class FirestoreTrainingRepository implements TrainingRepository {
   }
 
   async removeSkill(id: Id): Promise<void> {
-    await deleteDoc(doc(this.#skills(), id));
+    const batch = writeBatch(getDb());
+    batch.delete(doc(this.#skills(), id));
+    // Otherwise the picture outlives the skill and nothing will ever read it.
+    batch.delete(doc(this.#images(), id));
+    await batch.commit();
     // Dangling prerequisites are tolerated rather than swept: `unmetPrerequisites`
     // skips ids it cannot resolve, and a fan-out write on delete would be a
     // second failure mode for a case that resolves itself on the next edit.
+  }
+
+  subscribeSkillImage(
+    skillId: Id,
+    onChange: (image: SkillImage | null) => void,
+    onError: (error: Error) => void,
+  ): Unsubscribe {
+    return onSnapshot(
+      doc(this.#images(), skillId),
+      (snapshot) => onChange(snapshot.exists() ? (snapshot.data() as SkillImage) : null),
+      onError,
+    );
+  }
+
+  async setSkillImage(skillId: Id, dataUrl: string): Promise<void> {
+    if (!isStorableImage(dataUrl)) {
+      throw new Error('That image is too large to store.');
+    }
+    await setDoc(doc(this.#images(), skillId), { dataUrl, updatedAt: Date.now() });
+  }
+
+  async removeSkillImage(skillId: Id): Promise<void> {
+    await deleteDoc(doc(this.#images(), skillId));
   }
 
   // --- Sessions ------------------------------------------------------------

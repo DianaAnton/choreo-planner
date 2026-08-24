@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 
-import { layoutSkillGraph, prerequisiteClosure } from '../../domain/skillGraph';
+import { layoutSkillGraph } from '../../domain/skillGraph';
 import { LADDER, ladderIndex, ladderOf, type Skill } from '../../domain/training';
 import type { Id } from '../../domain/types';
 import { useTraining } from './useTraining';
@@ -11,18 +11,27 @@ import { useTraining } from './useTraining';
  * away the `requires` chain, which is the only thing that answers "what is
  * between me and an Ayesha" — and on a phone it is long, which reads as empty.
  *
- * Prerequisites sit above what they unlock. Fill shows ladder state. Tap a node
- * to open it; tap and hold nothing — pan with one finger, pinch with two, and
- * "Fit" puts the whole thing back on screen, which is the case this exists for.
+ * Prerequisites sit above what they unlock. Fill shows ladder state, and each
+ * chain is coloured by the root it descends from — with eighteen edges in one
+ * picture, "which line is this" is what the eye is actually asking, and uniform
+ * grey never answers it.
+ *
+ * One tap opens the skill. An earlier version made the first tap select and the
+ * second open; it was, correctly, called horrible. Pan with one finger, pinch
+ * with two, and "Fit" puts the whole thing back on screen.
  */
 
 // Layout constants, in SVG user units. The viewBox does the scaling, so these
 // are a drawing grid rather than pixels.
 const NODE_W = 150;
 const NODE_H = 54;
-const GAP_X = 26;
-const GAP_Y = 62;
-const PADDING = 28;
+const GAP_X = 30;
+// Generous: the vertical run is where an edge becomes traceable or doesn't.
+const GAP_Y = 84;
+const PADDING = 32;
+
+/** Edge colours, cycled by source node so a fan-out is traceable. */
+const LINEAGE_COUNT = 6;
 
 const MIN_SCALE = 0.15;
 const MAX_SCALE = 3;
@@ -31,12 +40,13 @@ interface Placed {
   skill: Skill;
   x: number;
   y: number;
+  /** Index into the palette, not an id — the renderer only needs the colour. */
+  lineage: number;
 }
 
 export function SkillMap() {
   const { skills } = useTraining();
   const navigate = useNavigate();
-  const [selected, setSelected] = useState<Id | null>(null);
 
   const { placed, edges, loose, extent } = useMemo(() => {
     const graph = layoutSkillGraph(skills);
@@ -49,6 +59,17 @@ export function SkillMap() {
       bandWidths.set(node.depth, Math.max(bandWidths.get(node.depth) ?? 0, node.order + 1));
     }
     const widest = graph.width || 1;
+
+    // Colour by the node an edge *leaves*, not by the root it descends from.
+    // Root lineage sounded right and measured wrong: every invert, shoulder
+    // mount and handspring traces back to "Basic climb", so the whole web came
+    // out one colour. Per-source colouring answers the question actually being
+    // asked — which of these lines came from Gemini — and `depth + order` keeps
+    // neighbours distinct both across a band and between bands.
+    const hueIndex = new Map<Id, number>();
+    for (const node of graph.nodes) {
+      hueIndex.set(node.id, (node.depth + node.order) % LINEAGE_COUNT);
+    }
 
     const positions = new Map<Id, { x: number; y: number }>();
     const placedNodes: Placed[] = [];
@@ -63,16 +84,25 @@ export function SkillMap() {
       const y = PADDING + node.depth * (NODE_H + GAP_Y);
 
       positions.set(node.id, { x, y });
-      placedNodes.push({ skill, x, y });
+      placedNodes.push({ skill, x, y, lineage: hueIndex.get(node.id) ?? 0 });
     }
 
     return {
       placed: placedNodes,
       edges: graph.edges
-        .map((edge) => ({ from: positions.get(edge.from), to: positions.get(edge.to) }))
+        .map((edge) => ({
+          from: positions.get(edge.from),
+          to: positions.get(edge.to),
+          lineage: hueIndex.get(edge.from) ?? 0,
+        }))
         .filter(
-          (edge): edge is { from: { x: number; y: number }; to: { x: number; y: number } } =>
-            edge.from !== undefined && edge.to !== undefined,
+          (
+            edge,
+          ): edge is {
+            from: { x: number; y: number };
+            to: { x: number; y: number };
+            lineage: number;
+          } => edge.from !== undefined && edge.to !== undefined,
         ),
       loose: graph.loose.map((id) => byId.get(id)).filter((s): s is Skill => s !== undefined),
       extent: {
@@ -81,11 +111,6 @@ export function SkillMap() {
       },
     };
   }, [skills]);
-
-  const highlighted = useMemo(
-    () => (selected ? prerequisiteClosure(skills, selected) : null),
-    [skills, selected],
-  );
 
   const { svgRef, view, fit, onPointerDown, onWheel } = usePanZoom(extent);
 
@@ -103,11 +128,6 @@ export function SkillMap() {
         <button type="button" className="ghost small" onClick={fit}>
           Fit
         </button>
-        {selected && (
-          <button type="button" className="ghost small" onClick={() => setSelected(null)}>
-            Clear path
-          </button>
-        )}
         <span className="muted small">Drag to pan · pinch to zoom · tap a move</span>
       </div>
 
@@ -120,23 +140,40 @@ export function SkillMap() {
         role="group"
         aria-label="Skill map"
       >
+        <defs>
+          {Array.from({ length: LINEAGE_COUNT }, (_, index) => (
+            <marker
+              key={index}
+              id={`arrow-${index}`}
+              viewBox="0 0 8 8"
+              refX="7"
+              refY="4"
+              markerWidth="5"
+              markerHeight="5"
+              orient="auto-start-reverse"
+            >
+              <path className={`map__arrow map__lineage-${index}`} d="M 0 0 L 8 4 L 0 8 z" />
+            </marker>
+          ))}
+        </defs>
+
         {edges.map((edge, index) => (
           <path
             key={index}
-            className="map__edge"
+            className={`map__edge map__lineage-${edge.lineage}`}
             d={edgePath(edge.from, edge.to)}
+            markerEnd={`url(#arrow-${edge.lineage})`}
             fill="none"
           />
         ))}
 
-        {placed.map(({ skill, x, y }) => (
+        {placed.map(({ skill, x, y, lineage }) => (
           <MapNode
             key={skill.id}
             skill={skill}
             x={x}
             y={y}
-            dimmed={highlighted !== null && !highlighted.has(skill.id)}
-            onSelect={() => setSelected(skill.id)}
+            lineage={lineage}
             onOpen={() => void navigate(`/training/skills/${skill.id}`)}
           />
         ))}
@@ -161,39 +198,29 @@ export function SkillMap() {
   );
 }
 
-/** A node is two taps: select to trace its path, tap again to open it. */
+/** One tap opens it. There is deliberately no selected state to get stuck in. */
 function MapNode({
   skill,
   x,
   y,
-  dimmed,
-  onSelect,
+  lineage,
   onOpen,
 }: {
   skill: Skill;
   x: number;
   y: number;
-  dimmed: boolean;
-  onSelect(): void;
+  lineage: number;
   onOpen(): void;
 }) {
-  const [armed, setArmed] = useState(false);
   const progress = (ladderIndex(ladderOf(skill)) + 1) / LADDER.length;
 
   return (
     <g
-      className={`map__node${dimmed ? ' map__node--dim' : ''}${
+      className={`map__node map__lineage-${lineage}${
         skill.isActive ? ' map__node--active' : ''
       }`}
       transform={`translate(${x} ${y})`}
-      onClick={() => {
-        if (armed) onOpen();
-        else {
-          setArmed(true);
-          onSelect();
-        }
-      }}
-      onPointerLeave={() => setArmed(false)}
+      onClick={onOpen}
       role="button"
       tabIndex={0}
       aria-label={`${skill.name}, ${ladderOf(skill)}`}
