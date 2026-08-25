@@ -751,8 +751,25 @@ chose, never repeats a skill, surfaces the conditioning menu, flags what was
 earned and left, applies the same three-quest cap, and ships no quest without a
 checkpoint that would leave it unactivatable.
 
+### Bullets on the skills list
+
+Three lists rendered browser bullets and an indent: the skills list, the refs
+list and the inbox, all of which use `<ul className="stack">`. Five other lists
+looked right only because each had remembered `list-style: none` for itself —
+which is exactly why this kept slipping through.
+
+Fixed once in the base styles rather than a sixth time per class. No list in
+this app is prose; every one is a layout container.
+
+(The cleanup pass that removed the five now-redundant declarations also matched
+the base rule it had just written, leaving `ul, ol {}`. Caught because the
+replacement count was five against four known lists — the arithmetic not
+adding up was the only signal.)
+
 ### Verified
 
 lint · typecheck · 190 unit tests (168 → 190) · 26 rules tests · build.
+`ul,ol{list-style:none;margin:0;padding:0}` confirmed present in the built CSS,
+not just the source.
 Crossing counts measured rather than assumed, in both directions. Both
 disciplines' grouping and Today list printed and read, not inferred.

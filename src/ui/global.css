@@ -25,6 +25,16 @@
   box-sizing: border-box;
 }
 
+/* No list in this app is prose — every one is a layout container. Making each
+   remember `list-style: none` is how three of them ended up with browser
+   bullets and an indent nobody asked for. */
+ul,
+ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
 body {
   margin: 0;
   background: var(--bg);
@@ -222,9 +232,6 @@ label {
 /* --- Project list -------------------------------------------------------- */
 
 .project-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
@@ -453,9 +460,6 @@ label {
 /* --- Quests and skills ---------------------------------------------------- */
 
 .quest-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
@@ -502,9 +506,6 @@ label {
 /* --- Chips ---------------------------------------------------------------- */
 
 .chip-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
@@ -567,9 +568,6 @@ label {
 
 .checkpoints,
 .history {
-  list-style: none;
-  margin: 0;
-  padding: 0;
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
