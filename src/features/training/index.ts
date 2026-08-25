@@ -2,6 +2,8 @@ export { TrainingProvider, SESSION_WINDOW_DAYS } from './TrainingProvider';
 export { useTraining } from './useTraining';
 export { TodayScreen } from './TodayScreen';
 export { SkillsScreen } from './SkillsScreen';
+export { SkillMap } from './SkillMap';
+export { SkillImagePanel } from './SkillImagePanel';
 export { SkillDetail } from './SkillDetail';
 export { LogSessionForm } from './LogSessionForm';
 export { InboxScreen } from './InboxScreen';

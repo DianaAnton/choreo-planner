@@ -669,3 +669,123 @@ button.small {
   min-height: 2rem;
   padding: 0 0.6rem;
 }
+
+/* --- The skill map -------------------------------------------------------- */
+
+.map {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.map__controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.map__canvas {
+  width: 100%;
+  /* Tall on a phone: the graph runs top-to-bottom, so height is the useful
+     axis. Capped against the viewport so the page itself never scrolls
+     horizontally to accommodate it. */
+  height: min(62vh, 34rem);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  /* Without this the browser claims the gesture for scrolling and the pan
+     never reaches the pointer handlers. */
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
+}
+
+.map__canvas:active {
+  cursor: grabbing;
+}
+
+.map__edge {
+  stroke: var(--border);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+
+/* Lineage palette. Each chain keeps one hue from its root all the way down, so
+   a line can be followed by colour where crossings make geometry ambiguous.
+   Distinguishable without relying on hue alone — the arrowheads and the
+   layout carry the direction. */
+.map__lineage-0 { --line: #d94f8c; }
+.map__lineage-1 { --line: #4fb3d9; }
+.map__lineage-2 { --line: #d9a54f; }
+.map__lineage-3 { --line: #7fd94f; }
+.map__lineage-4 { --line: #a44fd9; }
+.map__lineage-5 { --line: #d9704f; }
+
+.map__edge.map__lineage-0,
+.map__edge.map__lineage-1,
+.map__edge.map__lineage-2,
+.map__edge.map__lineage-3,
+.map__edge.map__lineage-4,
+.map__edge.map__lineage-5 {
+  stroke: var(--line);
+  opacity: 0.75;
+}
+
+.map__arrow {
+  fill: var(--line);
+}
+
+.map__node {
+  cursor: pointer;
+}
+
+.map__node-bg {
+  fill: var(--bg);
+}
+
+/* Ladder position as a fill: the shape of progress stays readable when you are
+   zoomed too far out to read the words. */
+.map__node-fill {
+  fill: var(--line, var(--accent));
+  opacity: 0.3;
+}
+
+.map__node-edge {
+  stroke: var(--line, var(--border));
+  stroke-width: 1.5;
+  opacity: 0.7;
+}
+
+.map__node--active .map__node-edge {
+  stroke: var(--accent);
+  stroke-width: 3;
+}
+
+.map__node-label {
+  fill: var(--fg);
+  font-size: 15px;
+  text-anchor: middle;
+  /* The label is part of the tap target, not a separate one. */
+  pointer-events: none;
+}
+
+.map__loose {
+  margin-top: 0.25rem;
+}
+
+/* --- Skill picture -------------------------------------------------------- */
+
+.skill-image {
+  display: block;
+  width: 100%;
+  max-width: 22rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+
+.badge--quiet {
+  background: var(--surface-raised);
+  color: var(--muted);
+  font-weight: 600;
+}

@@ -17,12 +17,14 @@ import {
   createInboxItem,
   createSession,
   createSkill,
+  isStorableImage,
   skillFromInboxItem,
   touchesForSession,
   type DateKey,
   type InboxItem,
   type Session,
   type Skill,
+  type SkillImage,
 } from '../domain/training';
 import type { Id } from '../domain/types';
 import { getDb } from '../lib/firebase';
@@ -48,6 +50,9 @@ import type {
  * FirestoreProjectRepository: a `serverTimestamp()` reads back as null until
  * the write lands, and the studio case is offline.
  */
+/** Firestore refuses a batch larger than this. The seed is well under it. */
+const MAX_BATCH_WRITES = 500;
+
 export class FirestoreTrainingRepository implements TrainingRepository {
   constructor(private readonly uid: string) {}
 
@@ -61,6 +66,10 @@ export class FirestoreTrainingRepository implements TrainingRepository {
 
   #inbox() {
     return collection(getDb(), 'users', this.uid, 'inbox');
+  }
+
+  #images() {
+    return collection(getDb(), 'users', this.uid, 'skillImages');
   }
 
   // --- Skills --------------------------------------------------------------
@@ -90,15 +99,66 @@ export class FirestoreTrainingRepository implements TrainingRepository {
     return { ...data, id: ref.id };
   }
 
+  newSkillId(): Id {
+    // `doc()` with no path mints an id locally — no round trip, works offline.
+    return doc(this.#skills()).id;
+  }
+
+  async createSkills(inputs: readonly (NewSkill & { id: Id })[]): Promise<Skill[]> {
+    if (inputs.length === 0) return [];
+    if (inputs.length > MAX_BATCH_WRITES) {
+      throw new Error(
+        `${inputs.length} skills exceeds Firestore's ${MAX_BATCH_WRITES}-write batch limit.`,
+      );
+    }
+
+    const batch = writeBatch(getDb());
+    const created = inputs.map(({ id, ...input }) => {
+      const data = createSkill(input);
+      batch.set(doc(this.#skills(), id), data);
+      return { ...data, id };
+    });
+
+    await batch.commit();
+    return created;
+  }
+
   async updateSkill(id: Id, patch: SkillPatch): Promise<void> {
     await updateDoc(doc(this.#skills(), id), patch);
   }
 
   async removeSkill(id: Id): Promise<void> {
-    await deleteDoc(doc(this.#skills(), id));
+    const batch = writeBatch(getDb());
+    batch.delete(doc(this.#skills(), id));
+    // Otherwise the picture outlives the skill and nothing will ever read it.
+    batch.delete(doc(this.#images(), id));
+    await batch.commit();
     // Dangling prerequisites are tolerated rather than swept: `unmetPrerequisites`
     // skips ids it cannot resolve, and a fan-out write on delete would be a
     // second failure mode for a case that resolves itself on the next edit.
+  }
+
+  subscribeSkillImage(
+    skillId: Id,
+    onChange: (image: SkillImage | null) => void,
+    onError: (error: Error) => void,
+  ): Unsubscribe {
+    return onSnapshot(
+      doc(this.#images(), skillId),
+      (snapshot) => onChange(snapshot.exists() ? (snapshot.data() as SkillImage) : null),
+      onError,
+    );
+  }
+
+  async setSkillImage(skillId: Id, dataUrl: string): Promise<void> {
+    if (!isStorableImage(dataUrl)) {
+      throw new Error('That image is too large to store.');
+    }
+    await setDoc(doc(this.#images(), skillId), { dataUrl, updatedAt: Date.now() });
+  }
+
+  async removeSkillImage(skillId: Id): Promise<void> {
+    await deleteDoc(doc(this.#images(), skillId));
   }
 
   // --- Sessions ------------------------------------------------------------

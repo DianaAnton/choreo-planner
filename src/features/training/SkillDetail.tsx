@@ -12,6 +12,7 @@ import {
   type Skill,
 } from '../../domain/training';
 import { LadderMeter } from './LadderMeter';
+import { SkillImagePanel } from './SkillImagePanel';
 import { useTraining } from './useTraining';
 
 interface Props {
@@ -86,7 +87,6 @@ export function SkillDetail({ skill }: Props) {
       {blocked.length > 0 && (
         <section className="stack">
           <h2>Not there yet</h2>
-          <p className="hint">These come first — none of them holds cleanly.</p>
           <ul className="chip-list">
             {blocked.map((required) => (
               <li key={required.id}>
@@ -102,6 +102,8 @@ export function SkillDetail({ skill }: Props) {
       <Checkpoints skill={skill} />
 
       {(skill.kind === 'practice' || skill.metric) && <Metric skill={skill} />}
+
+      <SkillImagePanel skill={skill} />
 
       <Refs skill={skill} />
 
@@ -148,11 +150,6 @@ export function SkillDetail({ skill }: Props) {
             Delete this skill
           </button>
         )}
-        {skill.requires.length > 0 && (
-          <p className="hint">
-            Prerequisites are seeded, not editable here yet — see the handoff note.
-          </p>
-        )}
       </section>
     </div>
   );
@@ -172,9 +169,6 @@ function Checkpoints({ skill }: Props) {
   return (
     <section className="stack">
       <h2>Checkpoints</h2>
-      <p className="hint">
-        Yours, not the app&rsquo;s. A quest cannot go active without at least one still open.
-      </p>
 
       {skill.checkpoints.length > 0 && (
         <ul className="checkpoints">
@@ -233,7 +227,6 @@ function Metric({ skill }: Props) {
             on {new Date(skill.metric.bestAt).toLocaleDateString()}
           </span>
         </p>
-        <p className="hint">Beat it from the Log screen — the number goes in there.</p>
       </section>
     );
   }
@@ -241,10 +234,6 @@ function Metric({ skill }: Props) {
   return (
     <section className="stack">
       <h2>Track a number</h2>
-      <p className="hint">
-        Optional. Without a unit there is nowhere for a number to go, so the Log screen
-        won&rsquo;t offer one.
-      </p>
       <div className="chip-row">
         {(['seconds', 'reps'] as const).map((option) => (
           <button
@@ -292,9 +281,6 @@ function Refs({ skill }: Props) {
   return (
     <section className="stack">
       <h2>References</h2>
-      <p className="hint">
-        Links out, never copies. Someone else&rsquo;s move database is theirs — deep-link it.
-      </p>
 
       {skill.refs.length > 0 && (
         <ul className="stack">

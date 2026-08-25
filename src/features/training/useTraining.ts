@@ -19,14 +19,22 @@ import {
   type SkillKind,
   type SkillMetric,
 } from '../../domain/training';
+import { STARTING_PATH, inPrerequisiteOrder } from '../../domain/trainingSeed';
 import type { Id } from '../../domain/types';
 import { newId } from '../../lib/ids';
-import type { NewInboxItem, NewSession, NewSkill } from '../../repositories/types';
+import type {
+  NewInboxItem,
+  NewSession,
+  NewSkill,
+  TrainingRepository,
+} from '../../repositories/types';
 import { TrainingContext } from './TrainingContext';
 
 export interface TrainingActions {
   /** `discipline` comes from the provider — callers never repeat it. */
   createSkill(input: Omit<NewSkill, 'discipline'>): Promise<Skill>;
+  /** Writes the whole starting curriculum in one commit. */
+  seedStartingPath(): Promise<Skill[]>;
   removeSkill(id: Id): Promise<void>;
   rename(skill: Skill, name: string): Promise<void>;
   setNotes(skill: Skill, notes: string): Promise<void>;
@@ -51,6 +59,8 @@ export interface TrainingActions {
 }
 
 export interface TrainingView {
+  /** Exposed for the image panel, which subscribes to one document of its own. */
+  repository: TrainingRepository;
   skills: Skill[];
   sessions: Session[];
   inbox: InboxItem[];
@@ -93,6 +103,28 @@ export function useTraining(): TrainingView {
   const actions = useMemo<TrainingActions>(
     () => ({
       createSkill: (input) => repository.createSkill({ ...input, discipline }),
+
+      seedStartingPath: () => {
+        // Ids first, so `requires` can point at siblings that do not exist yet
+        // and the whole graph lands in one commit rather than thirty.
+        const ordered = inPrerequisiteOrder(STARTING_PATH);
+        const idByKey = new Map(ordered.map((item) => [item.key, repository.newSkillId()]));
+
+        return repository.createSkills(
+          ordered.map((item) => ({
+            id: idByKey.get(item.key) ?? repository.newSkillId(),
+            name: item.name,
+            kind: item.kind,
+            discipline,
+            ...(item.category ? { category: item.category } : {}),
+            ...(item.metric ? { metric: { ...item.metric, best: 0, bestAt: Date.now() } } : {}),
+            checkpoints: (item.checkpoints ?? []).map((text) => createCheckpoint(text, newId())),
+            requires: (item.requires ?? [])
+              .map((key) => idByKey.get(key))
+              .filter((id): id is Id => id !== undefined),
+          })),
+        );
+      },
       removeSkill: (id) => repository.removeSkill(id),
 
       rename: (skill, name) => patch(skill, { name: name.trim() }),
@@ -156,6 +188,7 @@ export function useTraining(): TrainingView {
 
   return useMemo<TrainingView>(
     () => ({
+      repository,
       skills,
       sessions,
       inbox,
@@ -171,6 +204,6 @@ export function useTraining(): TrainingView {
       questSlotsLeft: activeQuestSlotsLeft(skills),
       actions,
     }),
-    [skills, sessions, inbox, loading, error, discipline, now, today, actions],
+    [repository, skills, sessions, inbox, loading, error, discipline, now, today, actions],
   );
 }

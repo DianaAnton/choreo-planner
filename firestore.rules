@@ -37,6 +37,12 @@ service cloud.firestore {
       match /inbox/{itemId} {
         allow read, write: if isOwner(uid);
       }
+
+      // One picture per skill, kept off the skill document so the skills query
+      // does not carry every image with it. See ADR 0012.
+      match /skillImages/{skillId} {
+        allow read, write: if isOwner(uid);
+      }
     }
 
     match /projects/{projectId} {

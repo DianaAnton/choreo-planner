@@ -11,6 +11,7 @@ import type {
   NewSkillInput,
   Session,
   Skill,
+  SkillImage,
 } from '../domain/training';
 import type { AudioMeta, Id, Project, ProjectSummary } from '../domain/types';
 
@@ -75,6 +76,21 @@ export interface TrainingRepository {
     onError: (error: Error) => void,
   ): Unsubscribe;
   createSkill(input: NewSkill): Promise<Skill>;
+
+  /**
+   * An id for a skill that has not been written yet. Firestore mints these
+   * client-side, so a whole graph can resolve its `requires` between siblings
+   * before any of it is sent.
+   */
+  newSkillId(): Id;
+
+  /**
+   * Writes many skills in one commit. The seed is ~30 documents: one at a time
+   * is a visible wait on a phone, and a half-written graph leaves `requires`
+   * pointing at skills that were never created.
+   */
+  createSkills(inputs: readonly (NewSkill & { id: Id })[]): Promise<Skill[]>;
+
   updateSkill(id: Id, patch: SkillPatch): Promise<void>;
   removeSkill(id: Id): Promise<void>;
 
@@ -97,6 +113,20 @@ export interface TrainingRepository {
    */
   logSession(input: NewSession, skills: readonly Skill[]): Promise<Session>;
   removeSession(id: Id): Promise<void>;
+
+  /**
+   * The skill's picture, on its own document and read only when a skill is
+   * opened — the skills query runs on every training screen and must not carry
+   * thirty images with it.
+   */
+  subscribeSkillImage(
+    skillId: Id,
+    onChange: (image: SkillImage | null) => void,
+    onError: (error: Error) => void,
+  ): Unsubscribe;
+  /** `dataUrl` must already be downscaled; see `toStorableImage`. */
+  setSkillImage(skillId: Id, dataUrl: string): Promise<void>;
+  removeSkillImage(skillId: Id): Promise<void>;
 
   subscribeInbox(
     onChange: (items: InboxItem[]) => void,

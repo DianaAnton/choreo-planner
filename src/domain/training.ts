@@ -176,6 +176,36 @@ export interface Session {
   note?: string;
 }
 
+/**
+ * A picture of the move, stored on its own document rather than on the skill.
+ *
+ * The skills query loads every skill on every training screen; thirty images
+ * embedded in it would be megabytes on mobile data before anything renders.
+ * This is read only when a skill is opened.
+ *
+ * Downscaled on the device to a JPEG data URL. Firestore's document limit is
+ * 1 MB and base64 costs about a third on top, so the cap below leaves room to
+ * spare — this is for recognising a shape, not for judging your line.
+ */
+export interface SkillImage {
+  /** `data:image/jpeg;base64,…` */
+  dataUrl: string;
+  updatedAt: number;
+}
+
+/** Longest edge, in pixels, after downscaling. */
+export const MAX_IMAGE_EDGE = 400;
+
+/** Cap on the stored string, not the original file. */
+export const MAX_IMAGE_BYTES = 150_000;
+
+export function isStorableImage(dataUrl: string): boolean {
+  return (
+    dataUrl.startsWith('data:image/') &&
+    dataUrl.length <= MAX_IMAGE_BYTES
+  );
+}
+
 export interface InboxItem {
   id: Id;
   url: string;

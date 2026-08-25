@@ -2,11 +2,13 @@ import {
   createInboxItem,
   createSession,
   createSkill,
+  isStorableImage,
   skillFromInboxItem,
   touchesForSession,
   type InboxItem,
   type Session,
   type Skill,
+  type SkillImage,
 } from '../domain/training';
 import type { DateKey } from '../domain/training';
 import type { Id } from '../domain/types';
@@ -29,10 +31,12 @@ export class InMemoryTrainingRepository implements TrainingRepository {
   #skills = new Map<Id, Skill>();
   #sessions = new Map<Id, Session>();
   #inbox = new Map<Id, InboxItem>();
+  #images = new Map<Id, SkillImage>();
 
   #skillListeners = new Set<{ discipline: string; notify: (skills: Skill[]) => void }>();
   #sessionListeners = new Set<{ since: DateKey; notify: (sessions: Session[]) => void }>();
   #inboxListeners = new Set<(items: InboxItem[]) => void>();
+  #imageListeners = new Map<Id, Set<(image: SkillImage | null) => void>>();
 
   #nextId = 1;
 
@@ -76,6 +80,23 @@ export class InMemoryTrainingRepository implements TrainingRepository {
     return this.#putSkill(createSkill(input, this.clock()));
   }
 
+  newSkillId(): Id {
+    return this.#id('sk');
+  }
+
+  async createSkills(inputs: readonly (NewSkill & { id: Id })[]): Promise<Skill[]> {
+    const created = inputs.map(({ id, ...input }) => {
+      const skill: Skill = { ...createSkill(input, this.clock()), id };
+      this.#skills.set(id, skill);
+      return skill;
+    });
+
+    // One emit, not one per skill: the Firestore batch lands as a single
+    // snapshot, and a test that saw thirty would be testing a fiction.
+    this.#emitSkills();
+    return created;
+  }
+
   async updateSkill(id: Id, patch: SkillPatch): Promise<void> {
     const existing = this.#skills.get(id);
     if (!existing) throw new Error(`No skill ${id}`);
@@ -86,6 +107,9 @@ export class InMemoryTrainingRepository implements TrainingRepository {
 
   async removeSkill(id: Id): Promise<void> {
     this.#skills.delete(id);
+    // Mirrors the Firestore batch: the picture must not outlive the skill.
+    this.#images.delete(id);
+    this.#emitImage(id);
     // A deleted skill must not linger as a dangling prerequisite on another.
     for (const [otherId, skill] of this.#skills) {
       if (skill.requires.includes(id)) {
@@ -96,6 +120,38 @@ export class InMemoryTrainingRepository implements TrainingRepository {
       }
     }
     this.#emitSkills();
+  }
+
+  #emitImage(skillId: Id): void {
+    const listeners = this.#imageListeners.get(skillId);
+    if (!listeners) return;
+    const image = this.#images.get(skillId) ?? null;
+    for (const listener of listeners) listener(image);
+  }
+
+  subscribeSkillImage(skillId: Id, onChange: (image: SkillImage | null) => void): Unsubscribe {
+    const listeners = this.#imageListeners.get(skillId) ?? new Set();
+    listeners.add(onChange);
+    this.#imageListeners.set(skillId, listeners);
+    onChange(this.#images.get(skillId) ?? null);
+
+    return () => {
+      listeners.delete(onChange);
+      if (listeners.size === 0) this.#imageListeners.delete(skillId);
+    };
+  }
+
+  async setSkillImage(skillId: Id, dataUrl: string): Promise<void> {
+    if (!isStorableImage(dataUrl)) {
+      throw new Error('That image is too large to store.');
+    }
+    this.#images.set(skillId, { dataUrl, updatedAt: this.clock() });
+    this.#emitImage(skillId);
+  }
+
+  async removeSkillImage(skillId: Id): Promise<void> {
+    this.#images.delete(skillId);
+    this.#emitImage(skillId);
   }
 
   // --- Sessions ------------------------------------------------------------

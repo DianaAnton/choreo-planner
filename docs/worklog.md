@@ -433,3 +433,136 @@ install prompt — a preview is HTTPS, which a LAN dev server is not.
 `firebase-setup.md` said the automatic domains were "all that's needed", which
 is true for production and actively misleading for previews. Corrected there
 and added to `deployment.md`'s gotcha list.
+
+---
+
+## 2026-08-24 — A starting curriculum, and a map instead of a list
+
+Branch: `feat/starting-curriculum-and-skill-map`. Decision in
+[ADR 0012](decisions/0012-ship-a-starting-curriculum.md), which supersedes ADR
+0011 §3.
+
+### What the first real use turned up
+
+Two complaints, one sentence apart: *"a lot of useless text and empty space at
+the same time"* and *"I hate the list view on the phone, I need something I can
+zoom out and get an overview of"*. Both are about the same failure — the screen
+was mostly explanation of a thing that had no content in it.
+
+### The curriculum
+
+ADR 0011 §3 said the app ships no curriculum, and that was wrong in the way
+that matters: it put the entire cost of starting on the moment the screen is
+blank. The seed is now 29 skills — three named goals (Ayesha, Shoulder mount,
+Handspring) with the spins, climbs and conditioning underneath — and every
+quest carries two or three starter checkpoints leaning on the one objective
+test the app already has, "hold it for the bar it would occupy".
+
+Where a shape has a left and a right, both sides are their own checkpoint. One
+strong side is the most common way a skill looks finished and is not.
+
+**Nothing was taken from anyone.** PoleMovebook's `robots.txt` disallows
+`/movepage.html`, `/collection.html` and `/combo.html`, so those were never
+fetched — and nothing from them was needed. Move names are the shared
+vocabulary of the discipline; descriptions, ratings and curation are not, and
+none are reproduced. No reference links are invented.
+
+### The map
+
+`domain/skillGraph.ts` lays the `requires` chain out in bands: prerequisites
+above, what they unlock below. Depth is the **longest** path from a root, not
+the shortest — the shortest would float a node above a prerequisite it has, and
+there is a test for exactly that. Cycles cannot be made through the UI but a
+hand-edited document could, so a back edge contributes nothing rather than
+hanging the tab.
+
+Verified by printing the computed bands rather than by trusting the renderer:
+
+```text
+band 0: Basic climb | Fireman spin
+band 1: Basic invert | Bracket hold | Back hook spin | Chair spin
+band 2: Gemini | Shoulder mount prep | Superman | Attitude spin
+band 3: Butterfly | Jade split | Scorpio | Shoulder mount
+band 4: Extended butterfly | Handspring prep | Brass monkey
+band 5: Ayesha | Handspring
+band 6: Iron X
+bands=7 width=4 edges=18
+```
+
+`SkillMap.tsx` renders it as SVG with a `viewBox` for pan and pinch-zoom
+(Pointer Events, so one code path covers mouse and touch, and
+`setPointerCapture` keeps a drag alive when the finger leaves the element —
+which on a phone it constantly does). Fill shows ladder position, so progress
+is readable when zoomed too far out to read the words. `Fit` is a first-class
+control, not a corner affordance: "zoom out and see the whole thing" is the
+case the screen exists for.
+
+### The text
+
+Six explanatory paragraphs came out of the skill screen alone, plus the long
+empty states. They were written to be helpful and read as padding, pushing the
+actual content below the fold — which is how a screen manages to feel wordy and
+empty at once. The one that stayed is the ladder rung's description, because
+that is the definition of where you are, not an explanation of the mechanism.
+
+### Also
+
+The seed is 29 documents. One at a time is a visible wait on a phone and a
+half-written graph leaves `requires` pointing at nothing, so
+`TrainingRepository` gained `newSkillId()` (Firestore mints ids client-side,
+offline, with no round trip) and a batched `createSkills()`.
+
+### Second round, same session: four things the first version got wrong
+
+Feedback on the map and list, all of it fair.
+
+**The two-tap node was horrible.** Tap to select and trace the road, tap again
+to open. A mode you can get stuck in, on a surface where a tap is also how you
+pan. One tap opens now; there is no selected state at all.
+
+**Colouring by root lineage measured wrong.** The theory was that a chain
+should be one colour end to end. Printing the computed layout showed why it
+fails here: every invert, shoulder mount and handspring traces back to "Basic
+climb", so the whole web came out in **two** colours and the complaint it was
+meant to fix stood. Edges are coloured by the node they *leave* now — which is
+the question actually being asked, *which of these came from Gemini* — giving
+six distinct colours over eighteen edges. The `lineage` field and its tests
+were deleted rather than left as dead code.
+
+Crossings also got barycentre sweeps instead of one downward pass: a node's
+position depends on what hangs off it as well as what feeds it.
+
+**Quests and Practice were two sections of near-identical rows**, which made
+the screen twice as long while saying nothing the rows did not. One list now,
+grouped by category, with kind as a marker. Active quests sit above all of it.
+
+**Checkpoints went from 2–3 to 4–5 per quest** — 86 across 20 quests.
+
+### Pictures
+
+One per skill, a JPEG data URL on `users/{uid}/skillImages/{skillId}`,
+downscaled on the device to a 400 px longest edge and capped at 150 KB.
+
+Deliberately **not** on the skill document: the skills query runs on every
+training screen, and thirty embedded images would be megabytes on mobile data
+before anything rendered. The image document is read only when a skill is
+opened. Deleting a skill deletes its picture in the same batch.
+
+Firebase Storage is the right answer at real scale and is not needed at this
+one — a bucket in Terraform, a rules file, upload plumbing and the first
+per-GB cost in the project, for images that exist to be recognised at a glance.
+Moving there later is a different collection, not a different schema.
+
+### The method that caught the colour bug
+
+Printing the computed layout, rather than trusting the renderer or waiting to
+look at it. The band listing showed `lineages=2` immediately; no amount of
+staring at the source would have. Worth repeating for anything where the code
+is a picture and there is no browser to look at it in.
+
+### Verified
+
+lint · typecheck · 141 unit tests (113 → 141) · 26 rules tests (24 → 26) ·
+build. Layout and colour distribution checked by printing them. Still no
+browser here: panning, pinch-zoom and whether the nodes are legible need a
+thumb.

@@ -58,6 +58,13 @@ Derived, in `domain/time.ts`:
 This module is where off-by-one errors live, so it is the most heavily
 unit-tested part of the codebase.
 
+`domain/skillGraph.ts` is there for the same reason. A skill's `requires` chain
+makes the library a DAG, and `layoutSkillGraph` assigns each node a band (the
+*longest* path from a root, so nothing floats above a prerequisite) and a slot
+within it. Depth assignment in a graph is where infinite loops live — a
+component that also handles pinch-zoom is a bad place to debug one — so the
+renderer receives coordinates and draws them.
+
 ### Entities
 
 | Entity | Notes |

@@ -71,7 +71,6 @@ export function TodayScreen() {
           {rusty.length > 0 && (
             <section className="stack">
               <h2>Gone rusty</h2>
-              <p className="hint">Held cleanly once, untouched for six weeks.</p>
               <ul className="chip-list">
                 {rusty.map((skill) => (
                   <li key={skill.id}>
@@ -89,7 +88,7 @@ export function TodayScreen() {
             <h2>Ten minutes spare</h2>
             {practice.length === 0 ? (
               <p className="empty">
-                No practice skills yet — conditioning, spins, the things with no endpoint.
+                Nothing to pick from yet.
               </p>
             ) : (
               <ul className="chip-list">
