@@ -8,5 +8,6 @@ export { SkillDetail } from './SkillDetail';
 export { LogSessionForm } from './LogSessionForm';
 export { InboxScreen } from './InboxScreen';
 export { LadderMeter } from './LadderMeter';
+export { DisciplineSwitch } from './DisciplineSwitch';
 export type { TrainingState } from './TrainingContext';
 export type { TrainingActions, TrainingView } from './useTraining';

@@ -19,6 +19,7 @@ import type {
   SkillPatch,
   TrainingRepository,
   Unsubscribe,
+  UserSettings,
 } from './types';
 
 /**
@@ -32,11 +33,13 @@ export class InMemoryTrainingRepository implements TrainingRepository {
   #sessions = new Map<Id, Session>();
   #inbox = new Map<Id, InboxItem>();
   #images = new Map<Id, SkillImage>();
+  #settings: UserSettings = {};
 
   #skillListeners = new Set<{ discipline: string; notify: (skills: Skill[]) => void }>();
   #sessionListeners = new Set<{ since: DateKey; notify: (sessions: Session[]) => void }>();
   #inboxListeners = new Set<(items: InboxItem[]) => void>();
   #imageListeners = new Map<Id, Set<(image: SkillImage | null) => void>>();
+  #settingsListeners = new Set<(settings: UserSettings) => void>();
 
   #nextId = 1;
 
@@ -152,6 +155,17 @@ export class InMemoryTrainingRepository implements TrainingRepository {
   async removeSkillImage(skillId: Id): Promise<void> {
     this.#images.delete(skillId);
     this.#emitImage(skillId);
+  }
+
+  subscribeSettings(onChange: (settings: UserSettings) => void): Unsubscribe {
+    this.#settingsListeners.add(onChange);
+    onChange(this.#settings);
+    return () => this.#settingsListeners.delete(onChange);
+  }
+
+  async setActiveDiscipline(disciplineId: string): Promise<void> {
+    this.#settings = { ...this.#settings, activeDiscipline: disciplineId };
+    for (const listener of this.#settingsListeners) listener(this.#settings);
   }
 
   // --- Sessions ------------------------------------------------------------

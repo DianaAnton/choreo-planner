@@ -6,6 +6,7 @@
  * `switch` in a component instead, stop and add a registry entry.
  */
 
+import type { DisciplineProfile } from '../domain/discipline';
 import type { Project, ShapeEntrySource } from '../domain/types';
 
 // --- Timeline layers -------------------------------------------------------
@@ -39,14 +40,12 @@ export interface ShapeSourceDefinition {
 
 // --- Disciplines -----------------------------------------------------------
 
-export interface DisciplineProfile {
-  id: string;
-  label: string;
-  /** Suggested preset categories; users can always type their own. */
-  defaultCategories: readonly string[];
-  /** Minimum sensible hold, surfaced as a warning rather than a hard limit. */
-  minHoldMs: number;
-}
+/**
+ * The type lives in `domain/discipline.ts` so features can read a profile
+ * without importing from `app/`. The registry and the registrations stay here,
+ * per ADR 0009 — the full set of active capabilities in one file.
+ */
+export type { DisciplineProfile, CleanRepTest } from '../domain/discipline';
 
 // --- Exporters -------------------------------------------------------------
 
@@ -85,9 +84,48 @@ export const exporters = createRegistry<Exporter>();
 export const POLE: DisciplineProfile = {
   id: 'pole',
   label: 'Pole',
-  defaultCategories: ['invert', 'spin', 'climb', 'floorwork', 'transition', 'pose'],
+  defaultCategories: ['invert', 'spin', 'climb', 'floorwork', 'transition', 'conditioning', 'flexibility'],
+  categoryLabels: {
+    invert: 'Inverts and holds',
+    spin: 'Spins',
+    climb: 'Climbs',
+    floorwork: 'Floorwork',
+    transition: 'Transitions',
+    conditioning: 'Conditioning',
+    flexibility: 'Flexibility',
+  },
   // The brief's "hold every shape at least 3 seconds" constraint.
-  minHoldMs: 3000,
+  cleanRepTest: { kind: 'hold', minMs: 3000 },
+  hasChoreo: true,
+};
+
+/**
+ * The second discipline, and the one that proved the seam was real (ADR 0013).
+ *
+ * Two things had to give. `cleanRep` cannot be a duration — an ollie is landed
+ * or it is not — so the test is a ratio. And the ladder's terminal rung is "in
+ * a line", not "in a choreo": the same idea, which is why only the label
+ * changed and not the ordinal.
+ */
+export const SKATEBOARD: DisciplineProfile = {
+  id: 'skateboard',
+  label: 'Skateboard',
+  defaultCategories: ['basics', 'flatground', 'grind', 'transition', 'conditioning'],
+  categoryLabels: {
+    basics: 'Getting rolling',
+    flatground: 'Flatground',
+    grind: 'Grinds and slides',
+    transition: 'Transition',
+    conditioning: 'Body prep',
+  },
+  cleanRepTest: { kind: 'consistency', land: 8, outOf: 10 },
+  ladderLabels: { inChoreo: 'In a line' },
+  ladderDescriptions: {
+    cleanRep: 'Landed and rolled away eight times in ten, both directions where that applies.',
+    inChoreo: 'Landed in a line, between other tricks, without setting up for it.',
+  },
+  hasChoreo: false,
 };
 
 disciplines.register(POLE);
+disciplines.register(SKATEBOARD);

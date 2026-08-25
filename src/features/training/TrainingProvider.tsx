@@ -1,5 +1,6 @@
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 
+import type { DisciplineProfile } from '../../domain/discipline';
 import {
   addDays,
   todayKey,
@@ -20,11 +21,13 @@ export const SESSION_WINDOW_DAYS = 180;
 
 interface Props {
   repository: TrainingRepository;
-  discipline: string;
+  profile: DisciplineProfile;
   children: ReactNode;
 }
 
-export function TrainingProvider({ repository, discipline, children }: Props) {
+export function TrainingProvider({ repository, profile, children }: Props) {
+  const discipline = profile.id;
+
   const [skills, setSkills] = useState<Skill[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [inbox, setInbox] = useState<InboxItem[]>([]);
@@ -91,14 +94,14 @@ export function TrainingProvider({ repository, discipline, children }: Props) {
   const value = useMemo<TrainingState>(
     () => ({
       repository,
-      discipline,
+      profile,
       skills,
       sessions,
       inbox,
       loading: pending > 0,
       error,
     }),
-    [repository, discipline, skills, sessions, inbox, pending, error],
+    [repository, profile, skills, sessions, inbox, pending, error],
   );
 
   return <TrainingContext.Provider value={value}>{children}</TrainingContext.Provider>;

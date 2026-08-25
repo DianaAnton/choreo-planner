@@ -34,7 +34,7 @@ export interface SeedSkill {
   metric?: { unit: 'seconds' | 'reps' };
 }
 
-export const STARTING_PATH: readonly SeedSkill[] = [
+export const POLE_PATH: readonly SeedSkill[] = [
   // --- Spins: the entry point, and where grip and swing are learned ---------
   {
     key: 'fireman',
@@ -373,6 +373,303 @@ export const STARTING_PATH: readonly SeedSkill[] = [
     category: 'flexibility',
   },
 ];
+
+/**
+ * Skateboarding. The ollie is the hinge — almost nothing flatground or on
+ * obstacles exists without it — so the graph is deliberately narrow at the top
+ * and fans out hard once it is landed.
+ *
+ * Checkpoints are written against the discipline's `cleanRepTest`, which is a
+ * ratio here rather than a duration: an ollie is landed or it is not.
+ */
+export const SKATEBOARD_PATH: readonly SeedSkill[] = [
+  // --- Getting rolling -------------------------------------------------------
+  {
+    key: 'push',
+    name: 'Pushing and riding',
+    kind: 'quest',
+    category: 'basics',
+    checkpoints: [
+      'Push and roll the length of the park without stepping off',
+      'Push comfortably in your natural stance',
+      'Foot lands back on the bolts without looking down',
+      'Stop on purpose, not by running out of speed',
+    ],
+  },
+  {
+    key: 'kickturn',
+    name: 'Kickturn',
+    kind: 'quest',
+    category: 'basics',
+    requires: ['push'],
+    checkpoints: [
+      'Turn 90° rolling, both directions',
+      'Nose comes off the ground rather than pivoting flat',
+      'Land 8 of 10 without putting a foot down',
+    ],
+  },
+  {
+    key: 'tictac',
+    name: 'Tic-tac',
+    kind: 'quest',
+    category: 'basics',
+    requires: ['push'],
+    checkpoints: [
+      'Ten tic-tacs in a row without a foot down',
+      'Gain speed from tic-tacs alone, no pushing',
+    ],
+  },
+  {
+    key: 'fakie',
+    name: 'Rolling fakie',
+    kind: 'quest',
+    category: 'basics',
+    requires: ['push'],
+    checkpoints: [
+      'Roll fakie the length of the park',
+      'Kickturn out of fakie without stepping off',
+      'It stops feeling backwards',
+    ],
+  },
+
+  // --- The ollie, and everything that hangs off it ----------------------------
+  {
+    key: 'ollie',
+    name: 'Ollie (stationary)',
+    kind: 'quest',
+    category: 'flatground',
+    requires: ['push'],
+    checkpoints: [
+      'Both wheels leave the ground',
+      'Land on the bolts, 8 of 10',
+      'Level in the air — nose and tail land together',
+      'Ollie over a flat obstacle, not just up',
+    ],
+  },
+  {
+    key: 'rolling-ollie',
+    name: 'Rolling ollie',
+    kind: 'quest',
+    category: 'flatground',
+    requires: ['ollie'],
+    checkpoints: [
+      'Ollie at rolling speed, 8 of 10',
+      'Roll away without a foot down',
+      'Ollie without slowing down first',
+      'Clear a crack or a line on the ground',
+    ],
+  },
+  {
+    key: 'ollie-curb',
+    name: 'Ollie up a curb',
+    kind: 'quest',
+    category: 'flatground',
+    requires: ['rolling-ollie'],
+    checkpoints: [
+      'Up a full curb, 8 of 10',
+      'Roll away clean, no foot down',
+      'Approach at an angle rather than straight on',
+    ],
+  },
+  {
+    key: 'shuvit',
+    name: 'Shuvit',
+    kind: 'quest',
+    category: 'flatground',
+    requires: ['push'],
+    checkpoints: [
+      'Board turns a full 180°',
+      'Land on the bolts, 8 of 10',
+      'Feet stay over the board rather than jumping clear',
+    ],
+  },
+  {
+    key: 'pop-shuvit',
+    name: 'Pop shuvit',
+    kind: 'quest',
+    category: 'flatground',
+    requires: ['ollie', 'shuvit'],
+    checkpoints: [
+      'Tail pops rather than scooping flat',
+      'Land 8 of 10 rolling',
+      'No fishing for the board with the back foot',
+    ],
+  },
+  {
+    key: 'fs-pop-shuvit',
+    name: 'Frontside pop shuvit',
+    kind: 'quest',
+    category: 'flatground',
+    requires: ['pop-shuvit'],
+    checkpoints: ['Land 8 of 10 rolling', 'Shoulders stay square'],
+  },
+  {
+    key: 'kickflip',
+    name: 'Kickflip',
+    kind: 'quest',
+    category: 'flatground',
+    requires: ['rolling-ollie'],
+    checkpoints: [
+      'Board completes the flip',
+      'Catch it with the back foot first',
+      'Land 8 of 10 rolling away',
+      'Film it and agree with what you see',
+    ],
+  },
+  {
+    key: 'heelflip',
+    name: 'Heelflip',
+    kind: 'quest',
+    category: 'flatground',
+    requires: ['rolling-ollie'],
+    checkpoints: ['Board completes the flip', 'Land 8 of 10 rolling away'],
+  },
+  {
+    key: 'varial-kickflip',
+    name: 'Varial kickflip',
+    kind: 'quest',
+    category: 'flatground',
+    requires: ['kickflip', 'pop-shuvit'],
+    checkpoints: ['Board flips and rotates together', 'Land 8 of 10 rolling away'],
+  },
+
+  // --- Manuals ---------------------------------------------------------------
+  {
+    key: 'manual',
+    name: 'Manual',
+    kind: 'quest',
+    category: 'flatground',
+    requires: ['push'],
+    checkpoints: [
+      'Hold for three board lengths',
+      'Come down without the tail scraping',
+      'Hold it 8 of 10 attempts',
+    ],
+  },
+  {
+    key: 'nose-manual',
+    name: 'Nose manual',
+    kind: 'quest',
+    category: 'flatground',
+    requires: ['manual'],
+    checkpoints: ['Hold for two board lengths', 'Come down under control, 8 of 10'],
+  },
+
+  // --- Grinds and slides -----------------------------------------------------
+  {
+    key: 'boardslide',
+    name: 'Boardslide',
+    kind: 'quest',
+    category: 'grind',
+    requires: ['rolling-ollie'],
+    checkpoints: [
+      'Slide the length of a low rail or ledge',
+      'Land 8 of 10 rolling away',
+      'Shoulders open through the slide',
+    ],
+  },
+  {
+    key: 'fifty-fifty',
+    name: '50-50 grind',
+    kind: 'quest',
+    category: 'grind',
+    requires: ['rolling-ollie'],
+    checkpoints: [
+      'Both trucks lock on',
+      'Grind the length of a low ledge',
+      'Land 8 of 10 rolling away',
+    ],
+  },
+  {
+    key: 'nosegrind',
+    name: 'Nosegrind',
+    kind: 'quest',
+    category: 'grind',
+    requires: ['fifty-fifty'],
+    checkpoints: ['Front truck holds the ledge', 'Land 8 of 10 rolling away'],
+  },
+
+  // --- Transition ------------------------------------------------------------
+  {
+    key: 'dropin',
+    name: 'Drop in',
+    kind: 'quest',
+    category: 'transition',
+    requires: ['kickturn'],
+    checkpoints: [
+      'Drop in on a small ramp without hesitating',
+      'Weight stays over the front foot',
+      'Land 8 of 10 rolling away',
+      'Drop in on something taller',
+    ],
+  },
+  {
+    key: 'rock-to-fakie',
+    name: 'Rock to fakie',
+    kind: 'quest',
+    category: 'transition',
+    requires: ['dropin', 'fakie'],
+    checkpoints: ['Front trucks clear the coping', 'Come back in fakie, 8 of 10'],
+  },
+  {
+    key: 'pump',
+    name: 'Pumping transition',
+    kind: 'quest',
+    category: 'transition',
+    requires: ['dropin'],
+    checkpoints: ['Gain speed without pushing', 'Three pumps back to back'],
+  },
+
+  // --- Body prep: uncapped, and where the "ten minutes spare" menu comes from
+  {
+    key: 'switch-riding',
+    name: 'Switch stance riding',
+    kind: 'practice',
+    category: 'conditioning',
+    metric: { unit: 'seconds' },
+  },
+  {
+    key: 'bailing',
+    name: 'Falling and bailing',
+    kind: 'practice',
+    category: 'conditioning',
+  },
+  {
+    key: 'ankles',
+    name: 'Ankle and knee prep',
+    kind: 'practice',
+    category: 'conditioning',
+    metric: { unit: 'reps' },
+  },
+  {
+    key: 'balance',
+    name: 'Balance board',
+    kind: 'practice',
+    category: 'conditioning',
+    metric: { unit: 'seconds' },
+  },
+  {
+    key: 'flatground-consistency',
+    name: 'Flatground consistency',
+    kind: 'practice',
+    category: 'conditioning',
+    metric: { unit: 'reps' },
+  },
+];
+
+/**
+ * The seed for a discipline, or nothing if it ships without one. A discipline
+ * with no curriculum still works — you just start from an empty map, which is
+ * exactly where pole was before ADR 0012.
+ */
+export const STARTING_PATHS: Readonly<Record<string, readonly SeedSkill[]>> = {
+  pole: POLE_PATH,
+  skateboard: SKATEBOARD_PATH,
+};
+
+export function startingPathFor(disciplineId: string): readonly SeedSkill[] {
+  return STARTING_PATHS[disciplineId] ?? [];
+}
 
 /**
  * Prerequisites first, so each skill can be written with its `requires` already

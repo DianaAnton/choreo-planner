@@ -260,7 +260,7 @@ position — not `<audio>.currentTime`, which is too coarse for a beat grid — 
 | --- | --- | --- |
 | `ShapeSource` | skill, free text | video ref, photo |
 | `TimelineLayer` | waveform, grid, sections, shapes, playhead | transitions, levels, notes |
-| `DisciplineProfile` | pole | hoop, silks, floor |
+| `DisciplineProfile` | pole, skateboard | hoop, silks, floor, anything with a progression |
 | `Exporter` | *(none)* | PDF, print sheet, video overlay |
 | `ProjectRepository` | Firestore | subcollection split, share links, offline queue |
 

@@ -65,8 +65,10 @@ adding anything, prefer registering into an existing seam over branching:
 - **`TimelineLayer`** — anything drawn over the waveform (beat grid, sections,
   shapes, playhead; later: transitions, levels, floorwork). Register, don't
   extend the canvas component.
-- **`DisciplineProfile`** — pole today; aerial hoop/silks/floor later. Owns the
-  preset taxonomy and any discipline-specific shape metadata.
+- **`DisciplineProfile`** — pole and skateboard today; anything with a
+  progression later. Owns the category taxonomy, the ladder's wording, and what
+  counts as a clean rep. The *type* lives in `domain/discipline.ts` so features
+  can read it; the registrations stay in `app/registry.ts`. See ADR 0013.
 - **`Exporter`** — nothing in v1; the seam exists so PDF/print/video export
   land as plugins.
 

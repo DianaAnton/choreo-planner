@@ -29,7 +29,14 @@ export type LadderState = (typeof LADDER)[number];
 
 export const FIRST_LADDER_STATE: LadderState = 'wantIt';
 
-/** Short enough to fit a meter segment on a phone. */
+/**
+ * Short enough to fit a meter segment on a phone.
+ *
+ * `inChoreo` is the one rung whose default wording assumes pole; disciplines
+ * override it through `DisciplineProfile.ladderLabels`. The *ordinal* is
+ * universal — want it, drilling, ugly, clean, filmed, used for real — which is
+ * why the ladder itself needed no change to hold skateboarding.
+ */
 export const LADDER_LABELS: Record<LadderState, string> = {
   wantIt: 'Want it',
   drilling: 'Drilling',
@@ -84,9 +91,12 @@ export function lowestLadder(states: readonly LadderState[]): LadderState | null
 }
 
 /**
- * The objective test for `cleanRep` on a skill a shape references: can you hold
- * it for the bar it occupies? `minHoldMs` comes from the DisciplineProfile, so
- * the planner and the tracker share one definition of done.
+ * The hold test for `cleanRep`: can you hold it for the bar it occupies? The
+ * threshold comes from the discipline's `CleanRepTest`, so the planner and the
+ * tracker share one definition of done.
+ *
+ * Only meaningful where holding is the measure — see `meetsConsistency` in
+ * `domain/discipline.ts` for disciplines where landing it is.
  */
 export function holdsForBar(heldMs: number, barDurationMs: number, minHoldMs: number): boolean {
   return heldMs >= Math.max(barDurationMs, minHoldMs);

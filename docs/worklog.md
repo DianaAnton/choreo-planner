@@ -566,3 +566,81 @@ lint · typecheck · 141 unit tests (113 → 141) · 26 rules tests (24 → 26) 
 build. Layout and colour distribution checked by printing them. Still no
 browser here: panning, pinch-zoom and whether the nodes are legible need a
 thumb.
+
+---
+
+## 2026-08-25 — A second discipline
+
+Branch: `feat/multi-discipline`, stacked on `feat/starting-curriculum-and-skill-map`.
+Decision in [ADR 0013](decisions/0013-two-disciplines.md).
+
+### The ask
+
+Hold a pole path *and* a skateboard path, so a friend can beta-test it on
+ollies. [ADR 0009](decisions/0009-extensibility-seams.md) reserved
+`DisciplineProfile` for this and had never been exercised — so this was the
+test of whether that seam was real.
+
+### It mostly was
+
+No migration, no rules change, no index change. Every skill already carried
+`discipline`, the query already filtered on it, the composite index was already
+deployed, and the WIP cap, ladder ordinal, staleness, sessions, inbox, graph
+layout and images were all discipline-neutral. Switching disciplines empties
+the skill list, so the seed prompt appears by itself — not designed, it fell
+out of filtering.
+
+### Two places it wasn't, and one layering mistake
+
+**`minHoldMs` assumed every discipline measures in seconds.** ADR 0011 §6's
+principle — an objective test the trainer does not have to invent — survives.
+The assumption under it does not: an ollie is not a hold. `minHoldMs: number`
+became a `CleanRepTest` union, hold or consistency. `meetsConsistency` compares
+ratios rather than raw counts, so 4 of 5 clears an 8-of-10 bar; demanding ten
+attempts to prove a trick you just landed four times running is bookkeeping,
+not a standard.
+
+**The ladder's terminal rung was pole vocabulary.** `inChoreo` is, for a skater,
+"in a line". Same idea, different sport — so only the *label* changed. The
+six-state ordinal held a second discipline unmodified, which is the best
+evidence yet that it was modelled at the right altitude.
+
+**`DisciplineProfile` was in `app/registry.ts`, which features may not import.**
+Fine while only the composition root read a profile; useless the moment screens
+need per-discipline wording. The type moved to `domain/discipline.ts`; the
+registry and registrations stayed put, per ADR 0009.
+
+### Built
+
+- `POLE` and `SKATEBOARD` profiles; the choreo planner is gated on
+  `hasChoreo`, so a skateboarder never sees a tab for pole routines.
+- A skateboard curriculum: 26 skills, 21 quests, 60 checkpoints, written
+  against a ratio rather than a duration. The ollie is the hinge — almost
+  nothing flatground or on obstacles exists without it — so the graph is narrow
+  at the top and fans out hard once it lands:
+
+```text
+band 0: Pushing and riding
+band 1: Manual | Kickturn | Ollie | Rolling fakie | Shuvit | Tic-tac
+band 2: Nose manual | Drop in | Rolling ollie | Pop shuvit
+band 3: 50-50 | Pumping | Kickflip | Rock to fakie | Boardslide | Heelflip | …
+band 4: Nosegrind | Varial kickflip
+```
+
+- Active discipline on the `users/{uid}` document, not local storage: on iOS an
+  installed app and Safari have separate storage, and which sport you are is a
+  fact about the person.
+- Seed tests now run every structural rule against *every* registered
+  discipline through `describe.each`, so a third cannot ship malformed.
+
+### Known and deliberately not fixed
+
+The app is called Choreo Planner, in a repo called `choreo-planner`, and now
+holds skateboarding. That is wrong. Renaming touches the manifest, docs, the
+repo and the hosting site, and the name is the owner's to pick — its own change,
+not a rider on this one.
+
+### Verified
+
+lint · typecheck · 164 unit tests (141 → 164) · rules · build. Both maps
+checked by printing their bands. Still no browser here.

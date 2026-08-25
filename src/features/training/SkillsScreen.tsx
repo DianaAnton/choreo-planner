@@ -11,7 +11,8 @@ import {
   type SkillKind,
   type TrainingFieldError,
 } from '../../domain/training';
-import { STARTING_PATH, inPrerequisiteOrder } from '../../domain/trainingSeed';
+import { categoryLabel } from '../../domain/discipline';
+import { startingPathFor } from '../../domain/trainingSeed';
 import { LadderMeter } from './LadderMeter';
 import { SkillMap } from './SkillMap';
 import { useTraining } from './useTraining';
@@ -71,6 +72,7 @@ export function SkillsScreen() {
  * am I doing", and burying them under C-for-climb was silly.
  */
 function SkillList({ skills }: { skills: Skill[] }) {
+  const { profile } = useTraining();
   const active = skills.filter((skill) => skill.isActive);
   const rest = skills.filter((skill) => !skill.isActive);
 
@@ -102,7 +104,7 @@ function SkillList({ skills }: { skills: Skill[] }) {
 
       {ordered.map(([category, members]) => (
         <section key={category} className="stack">
-          <h2>{label(category)}</h2>
+          <h2>{categoryLabel(profile, category)}</h2>
           <ul className="stack">
             {[...members]
               .sort((a, b) => a.name.localeCompare(b.name))
@@ -114,18 +116,6 @@ function SkillList({ skills }: { skills: Skill[] }) {
       ))}
     </div>
   );
-}
-
-function label(category: string): string {
-  const known: Record<string, string> = {
-    invert: 'Inverts and holds',
-    spin: 'Spins',
-    climb: 'Climbs',
-    conditioning: 'Conditioning',
-    flexibility: 'Flexibility',
-    other: 'Everything else',
-  };
-  return known[category] ?? category[0]?.toUpperCase() + category.slice(1);
 }
 
 function SkillRow({ skill }: { skill: Skill }) {
@@ -225,7 +215,7 @@ function NewSkillForm({ onDone }: { onDone(): void }) {
  * the graph cannot half-land.
  */
 function SeedPrompt() {
-  const { actions } = useTraining();
+  const { actions, discipline } = useTraining();
   const [seeding, setSeeding] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
 
@@ -240,16 +230,23 @@ function SeedPrompt() {
     }
   }
 
-  const goals = ['Ayesha', 'Shoulder mount', 'Handspring'];
-  const quests = inPrerequisiteOrder(STARTING_PATH).filter((s) => s.kind === 'quest').length;
+  const path = startingPathFor(discipline);
+  const quests = path.filter((item) => item.kind === 'quest').length;
+  // The goals are the ends of the chains — whatever this discipline's are,
+  // rather than three pole moves hardcoded into the copy.
+  const required = new Set(path.flatMap((item) => item.requires ?? []));
+  const goals = path
+    .filter((item) => item.kind === 'quest' && !required.has(item.key) && item.requires?.length)
+    .map((item) => item.name)
+    .slice(0, 3);
 
   return (
     <section className="card stack">
       <h2>Start from a map</h2>
       <p className="muted">
-        {quests} moves along the road to {goals.slice(0, -1).join(', ')} and {goals.at(-1)}, plus
-        the conditioning underneath — each with a checkpoint or two to argue with. All of it is
-        yours to rename, re-order or delete.
+        {quests} moves{goals.length > 1 && ` on the road to ${goals.slice(0, -1).join(', ')} and ${goals.at(-1)}`},
+        plus the conditioning underneath — each with a checkpoint or two to argue with. All of it
+        is yours to rename, re-order or delete.
       </p>
       {failure && <p className="field-error">{failure}</p>}
       <div className="form__actions">
