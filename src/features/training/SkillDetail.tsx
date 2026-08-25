@@ -4,7 +4,8 @@ import { Link } from 'react-router';
 import { describeCleanRep, ladderDescriptionsFor } from '../../domain/discipline';
 import {
   FELT_LABELS,
-  SKILL_KIND_LABELS,
+  isPractice,
+  isQuest,
   ladderOf,
   normalizeUrl,
   sessionsForSkill,
@@ -42,19 +43,6 @@ export function SkillDetail({ skill }: Props) {
     <div className="stack">
       <header className="stack">
         <h1>{skill.name}</h1>
-        <div className="chip-row">
-          {(['quest', 'practice'] as const).map((option) => (
-            <button
-              key={option}
-              type="button"
-              className={`chip chip--button${skill.kind === option ? ' chip--on' : ''}`}
-              aria-pressed={skill.kind === option}
-              onClick={() => actions.setKind(skill, option)}
-            >
-              {SKILL_KIND_LABELS[option]}
-            </button>
-          ))}
-        </div>
       </header>
 
       <section className="stack">
@@ -69,7 +57,7 @@ export function SkillDetail({ skill }: Props) {
         </p>
       </section>
 
-      {skill.kind === 'quest' && (
+      {isQuest(skill) && (
         <section className="stack">
           {skill.isActive ? (
             <button type="button" className="ghost" onClick={() => actions.deactivate(skill)}>
@@ -105,7 +93,7 @@ export function SkillDetail({ skill }: Props) {
 
       <Checkpoints skill={skill} />
 
-      {(skill.kind === 'practice' || skill.metric) && <Metric skill={skill} />}
+      {(isPractice(skill) || skill.metric) && <Metric skill={skill} />}
 
       <SkillImagePanel skill={skill} />
 

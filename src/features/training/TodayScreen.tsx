@@ -3,26 +3,37 @@ import { Link } from 'react-router';
 import {
   checkpointProgress,
   daysSinceUsed,
+  isStale,
+  isQuest,
   ladderOf,
   nextCheckpoint,
+  todayList,
   type Skill,
+  type TodayReason,
 } from '../../domain/training';
 import { LadderMeter } from './LadderMeter';
 import { useTraining } from './useTraining';
 
 /**
- * The screen you open standing next to the pole. Three questions, in the order
- * they get asked: what am I working on, what has gone rusty, and what can I do
- * with ten minutes.
+ * The screen you open standing next to the pole, or at the park.
+ *
+ * **One list, not three.** It used to split into "Working on", "Gone rusty" and
+ * "Ten minutes spare" — quests over here, practice over there — which is the
+ * app's internal taxonomy leaking onto the surface. Standing there with ten
+ * minutes free you do not want to be told which of three boxes your options are
+ * filed in; you want one ordered list and a reason next to each row.
+ *
+ * The order *is* the priority: active quests, then what has gone rusty, then
+ * whatever has been untouched longest. Why a row is there is a word on the row.
  *
  * Deliberately no charts, no streak, no total hours — see the risk noted
  * against Phase 2.5 in docs/plan.md.
  */
 export function TodayScreen() {
-  const { quests, practice, stale, inbox, daysTrainedThisWeek, weeklyTarget, loading, error } =
-    useTraining();
+  const { skills, inbox, daysTrainedThisWeek, weeklyTarget, loading, error } = useTraining();
 
-  const rusty = stale.filter((skill) => skill.kind === 'quest');
+  const now = Date.now();
+  const rows = todayList(skills, now);
 
   return (
     <div className="stack">
@@ -44,111 +55,100 @@ export function TodayScreen() {
 
       {loading ? (
         <p className="muted">Loading…</p>
+      ) : rows.length === 0 ? (
+        <p className="empty">
+          {skills.length === 0 ? (
+            <>
+              Nothing here yet. <Link to="/training/skills">Start from a map</Link>.
+            </>
+          ) : (
+            <>
+              Nothing needs you today. <Link to="/training/skills">Pick something</Link>.
+            </>
+          )}
+        </p>
       ) : (
-        <>
-          <section className="stack">
-            <div className="section-head">
-              <h2>Working on</h2>
-              <Link to="/training/skills" className="small">
-                All skills
-              </Link>
-            </div>
+        <section className="stack">
+          <div className="section-head">
+            <h2>Today</h2>
+            <Link to="/training/skills" className="small">
+              All skills
+            </Link>
+          </div>
 
-            {quests.length === 0 ? (
-              <p className="empty">
-                Nothing active. Pick one thing from{' '}
-                <Link to="/training/skills">your skills</Link> and give it a checkpoint.
-              </p>
-            ) : (
-              <ul className="quest-list">
-                {quests.map((quest) => (
-                  <QuestCard key={quest.id} skill={quest} />
-                ))}
-              </ul>
-            )}
-          </section>
+          <ul className="quest-list">
+            {rows.map(({ skill, reason }) => (
+              <TodayRow key={skill.id} skill={skill} reason={reason} now={now} />
+            ))}
+          </ul>
+        </section>
+      )}
 
-          {rusty.length > 0 && (
-            <section className="stack">
-              <h2>Gone rusty</h2>
-              <ul className="chip-list">
-                {rusty.map((skill) => (
-                  <li key={skill.id}>
-                    <Link to={`/training/skills/${skill.id}`} className="chip chip--warn">
-                      {skill.name}
-                      <span className="chip__meta">{lastTouched(skill)}</span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-
-          <section className="stack">
-            <h2>Ten minutes spare</h2>
-            {practice.length === 0 ? (
-              <p className="empty">
-                Nothing to pick from yet.
-              </p>
-            ) : (
-              <ul className="chip-list">
-                {practice.map((skill) => (
-                  <li key={skill.id}>
-                    <Link to={`/training/skills/${skill.id}`} className="chip">
-                      {skill.name}
-                      <span className="chip__meta">{lastTouched(skill)}</span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-
-          {inbox.length > 0 && (
-            <p className="notice">
-              <Link to="/training/inbox">
-                {inbox.length} saved {inbox.length === 1 ? 'link' : 'links'} to sort out
-              </Link>
-            </p>
-          )}
-        </>
+      {inbox.length > 0 && (
+        <p className="notice">
+          <Link to="/training/inbox">
+            {inbox.length} saved {inbox.length === 1 ? 'link' : 'links'} to sort out
+          </Link>
+        </p>
       )}
     </div>
   );
 }
 
-function QuestCard({ skill }: { skill: Skill }) {
+function TodayRow({ skill, reason, now }: { skill: Skill; reason: TodayReason; now: number }) {
   const next = nextCheckpoint(skill);
   const { done, total } = checkpointProgress(skill);
+  const quest = isQuest(skill);
 
   return (
-    <li className="card quest">
-      <Link to={`/training/skills/${skill.id}`} className="quest__title">
-        {skill.name}
-      </Link>
+    <li className={`card quest quest--${reason}`}>
+      <div className="quest__head">
+        <Link to={`/training/skills/${skill.id}`} className="quest__title">
+          {skill.name}
+        </Link>
+        <span className={`tag tag--${reason}`}>{reasonLabel(reason, skill, now)}</span>
+      </div>
 
-      <LadderMeter state={ladderOf(skill)} />
+      {quest && <LadderMeter state={ladderOf(skill)} />}
 
-      <p className="quest__next">
-        {next ? (
-          <>
-            <span className="muted small">Next</span> {next.text}
-          </>
-        ) : (
-          <span className="muted">Every checkpoint ticked — have you filmed it?</span>
-        )}
-      </p>
+      {/* Only active quests carry a next step; for everything else the row is
+          the whole message and a second line would be padding. */}
+      {reason === 'active' && (
+        <>
+          <p className="quest__next">
+            {next ? (
+              <>
+                <span className="muted small">Next</span> {next.text}
+              </>
+            ) : (
+              <span className="muted">Every checkpoint ticked — have you filmed it?</span>
+            )}
+          </p>
+          <p className="muted small">
+            {done}/{total} checkpoints · {lastTouched(skill, now)}
+          </p>
+        </>
+      )}
 
-      <p className="muted small">
-        {done}/{total} checkpoints · {lastTouched(skill)}
-      </p>
+      {reason !== 'active' && (
+        <p className="muted small">
+          {skill.metric ? `best ${skill.metric.best} ${skill.metric.unit} · ` : ''}
+          {lastTouched(skill, now)}
+        </p>
+      )}
     </li>
   );
 }
 
+function reasonLabel(reason: TodayReason, skill: Skill, now: number): string {
+  if (reason === 'active') return 'working on';
+  if (reason === 'rusty') return 'rusty';
+  return isStale(skill, now) ? 'rusty' : 'ten minutes';
+}
+
 /** Coarse on purpose — "3 minutes ago" is noise when the unit of work is a day. */
-function lastTouched(skill: Skill): string {
-  const days = daysSinceUsed(skill);
+function lastTouched(skill: Skill, now: number = Date.now()): string {
+  const days = daysSinceUsed(skill, now);
   if (days === null) return 'never trained';
   if (days === 0) return 'today';
   if (days === 1) return 'yesterday';

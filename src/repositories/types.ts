@@ -98,6 +98,13 @@ export interface TrainingRepository {
 
   updateSkill(id: Id, patch: SkillPatch): Promise<void>;
   removeSkill(id: Id): Promise<void>;
+  /**
+   * Deletes many skills and their pictures in one commit. Exists because
+   * resetting a discipline while the curriculum is still being tuned means
+   * clearing thirty documents, and doing that one tap at a time is not a
+   * workflow anyone will follow.
+   */
+  removeSkills(ids: readonly Id[]): Promise<void>;
 
   /**
    * History from `sinceDate` forward. Sessions accumulate without bound, so

@@ -11,7 +11,6 @@ import {
   addDays,
   advanceLadder,
   canActivateQuest,
-  canPromoteToKind,
   checkpointProgress,
   createCheckpoint,
   createInboxItem,
@@ -25,7 +24,10 @@ import {
   isDateKey,
   isLadderAtLeast,
   isSameWeek,
+  isPractice,
+  isQuest,
   isStale,
+  kindOf,
   ladderIndex,
   lowestLadder,
   nextCheckpoint,
@@ -55,11 +57,11 @@ function skill(overrides: Partial<Skill> = {}): Skill {
   return {
     id: 's1',
     name: 'Ayesha',
-    kind: 'quest',
     discipline: 'pole',
     refs: [],
     ladder: 'wantIt',
-    checkpoints: [],
+    // A quest by construction: kind is derived from having a checkpoint.
+    checkpoints: [open('base-c')],
     isActive: false,
     requires: [],
     createdAt: 0,
@@ -148,29 +150,17 @@ describe('the WIP cap', () => {
   it('does not count practice skills against the cap', () => {
     const target = withCheckpoint('s9', 'Ayesha');
     const conditioning = Array.from({ length: 6 }, (_, i) =>
-      skill({ id: `p${i}`, kind: 'practice', isActive: true }),
+      skill({ id: `p${i}`, checkpoints: [], isActive: true }),
     );
     expect(canActivateQuest(target, [...conditioning, target])).toEqual({ ok: true });
     expect(activeQuests([...conditioning, target])).toEqual([]);
   });
 
   it('refuses to activate a practice skill at all', () => {
-    const target = skill({ kind: 'practice' });
+    const target = skill({ checkpoints: [] });
     const result = canActivateQuest(target, [target]);
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.reason).toBe('notAQuest');
-  });
-
-  it('blocks promoting an inbox item to a quest at the cap, but never to practice', () => {
-    // An inactive new quest would satisfy the letter of the cap and defeat it.
-    const active = Array.from({ length: MAX_ACTIVE_QUESTS }, (_, i) =>
-      withCheckpoint(`a${i}`, `Q${i}`, true),
-    );
-    const blocked = canPromoteToKind('quest', active);
-    expect(blocked.ok).toBe(false);
-    if (!blocked.ok) expect(blocked.message).toContain('Q0, Q1, Q2');
-    expect(canPromoteToKind('practice', active)).toEqual({ ok: true });
-    expect(canPromoteToKind('quest', active.slice(0, -1))).toEqual({ ok: true });
   });
 
   it('caps at exactly three, so the constant and the rule cannot drift', () => {
@@ -219,7 +209,7 @@ describe('staleness', () => {
   });
 
   it('flags any practice skill on recency alone, since it has no ladder', () => {
-    const grip = skill({ kind: 'practice', lastUsedAt: NOW - 100 * DAY });
+    const grip = skill({ checkpoints: [], lastUsedAt: NOW - 100 * DAY });
     expect(isStale(grip, NOW)).toBe(true);
   });
 
@@ -237,9 +227,9 @@ describe('staleness', () => {
   it('sorts the practice menu stalest first, with never-trained at the top', () => {
     const menu = practiceMenu(
       [
-        skill({ id: 'a', name: 'Handstand', kind: 'practice', lastUsedAt: NOW - 3 * DAY }),
-        skill({ id: 'b', name: 'Grip', kind: 'practice' }),
-        skill({ id: 'c', name: 'Pendulum', kind: 'practice', lastUsedAt: NOW - 30 * DAY }),
+        skill({ id: 'a', name: 'Handstand', checkpoints: [], lastUsedAt: NOW - 3 * DAY }),
+        skill({ id: 'b', name: 'Grip', checkpoints: [] }),
+        skill({ id: 'c', name: 'Pendulum', checkpoints: [], lastUsedAt: NOW - 30 * DAY }),
         skill({ id: 'd', name: 'Ayesha' }),
       ],
       NOW,
@@ -250,8 +240,8 @@ describe('staleness', () => {
   it('orders two never-trained skills deterministically rather than by NaN', () => {
     const first = practiceMenu(
       [
-        skill({ id: 'z', name: 'Zig', kind: 'practice' }),
-        skill({ id: 'a', name: 'Arch', kind: 'practice' }),
+        skill({ id: 'z', name: 'Zig', checkpoints: [] }),
+        skill({ id: 'a', name: 'Arch', checkpoints: [] }),
       ],
       NOW,
     );
@@ -375,7 +365,7 @@ describe('logging a session', () => {
   it('raises a metric best only when the mark beats it', () => {
     const grip = skill({
       id: 'g',
-      kind: 'practice',
+      checkpoints: [],
       metric: { unit: 'seconds', best: 30, bestAt: 0 },
     });
 
@@ -392,7 +382,7 @@ describe('logging a session', () => {
 
   it('ignores a number logged against a skill with no unit configured', () => {
     // 40 what? Without a unit the number is meaningless, so it is not a best.
-    const bare = skill({ id: 'b', kind: 'practice' });
+    const bare = skill({ id: 'b', checkpoints: [] });
     expect(improvedMetric(bare, 40, NOW)).toBeNull();
     expect(
       touchesForSession(session({ skillIds: ['b'], marks: { b: 40 } }), [bare])[0]?.metric,
@@ -473,7 +463,7 @@ describe('validation', () => {
 
 describe('creating things', () => {
   it('never creates a skill already active — activation has a cap attached', () => {
-    const created = createSkill({ name: '  Ayesha  ', kind: 'quest', discipline: 'pole' });
+    const created = createSkill({ name: '  Ayesha  ', discipline: 'pole' });
     expect(created.name).toBe('Ayesha');
     expect(created.isActive).toBe(false);
     expect(created.ladder).toBe('wantIt');
@@ -483,7 +473,7 @@ describe('creating things', () => {
   it('omits empty optional fields rather than writing undefined', () => {
     const created = createSkill({
       name: 'Grip',
-      kind: 'practice',
+      checkpoints: [],
       discipline: 'pole',
       category: '  ',
       notes: '',
@@ -499,11 +489,50 @@ describe('creating things', () => {
     };
     const created = skillFromInboxItem(item, {
       name: 'Shoulder mount',
-      kind: 'quest',
       discipline: 'pole',
     });
 
     expect(created.refs).toEqual([{ url: 'https://example.com/reel', note: 'watch the hips' }]);
     expect(created.isActive).toBe(false);
+  });
+});
+
+describe('kind is derived, not stored', () => {
+  it('is a quest exactly when it has a checkpoint', () => {
+    // ADR 0014: writing down what would count as progress *is* what makes
+    // something a quest, so asking as well was asking twice.
+    expect(kindOf({ checkpoints: [] })).toBe('practice');
+    expect(kindOf({ checkpoints: [open('c1')] })).toBe('quest');
+  });
+
+  it('stays a quest once every checkpoint is ticked', () => {
+    // Otherwise finishing a quest would silently reclassify it as conditioning
+    // and drop it out of the cap.
+    const finished = skill({ checkpoints: [{ ...open('c1'), doneAt: 5 }] });
+    expect(kindOf(finished)).toBe('quest');
+    expect(isQuest(finished)).toBe(true);
+  });
+
+  it('turns practice into a quest the moment a checkpoint is written', () => {
+    // ADR 0011's example — a handstand starting as practice and becoming a
+    // quest — without a toggle.
+    const handstand = skill({ name: 'Handstand', checkpoints: [] });
+    expect(isPractice(handstand)).toBe(true);
+    expect(isQuest({ ...handstand, checkpoints: [open('c1')] })).toBe(true);
+  });
+
+  it('keeps conditioning out of the three-quest cap', () => {
+    const conditioning = Array.from({ length: 8 }, (_, i) =>
+      skill({ id: `p${i}`, checkpoints: [], isActive: true }),
+    );
+    expect(activeQuests(conditioning)).toEqual([]);
+    expect(activeQuestSlotsLeft(conditioning)).toBe(MAX_ACTIVE_QUESTS);
+  });
+
+  it('still refuses to activate something with nothing to tick', () => {
+    const bare = skill({ checkpoints: [] });
+    const result = canActivateQuest(bare, [bare]);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reason).toBe('notAQuest');
   });
 });

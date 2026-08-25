@@ -138,6 +138,22 @@ function orderBands(
 
   for (let pass = 0; pass < SWEEPS; pass += 1) sweep(pass % 2 === 0);
 
+  transpose(bands, bandCount, byId, order);
+
+  // A dragged node beats the heuristic. Applied last so the sweeps still
+  // position everything the user has not touched.
+  for (let depth = 0; depth < bandCount; depth += 1) {
+    const band = bands.get(depth) ?? [];
+    if (!band.some((id) => byId.get(id)?.mapOrder !== undefined)) continue;
+
+    const arranged = [...band].sort((a, b) => {
+      const keyA = byId.get(a)?.mapOrder ?? order.get(a) ?? 0;
+      const keyB = byId.get(b)?.mapOrder ?? order.get(b) ?? 0;
+      return keyA - keyB || (byId.get(a)?.name ?? '').localeCompare(byId.get(b)?.name ?? '');
+    });
+    arranged.forEach((id, index) => order.set(id, index));
+  }
+
   return order;
 }
 
@@ -154,6 +170,84 @@ function meanNeighbourOrder(
   // end, which would drag roots away from what descends from them.
   if (positions.length === 0) return order.get(id) ?? 0;
   return positions.reduce((total, position) => total + position, 0) / positions.length;
+}
+
+
+/**
+ * Barycentre's usual companion: walk each band swapping adjacent pairs whenever
+ * the swap removes more crossings than it creates, until nothing improves.
+ *
+ * Barycentre gets the broad arrangement right and then stops — it has no notion
+ * of a crossing at all, only of average position. This is the pass that
+ * actually counts them. Kept because it measurably helps: on the skateboard
+ * map, which is the widest, it is the difference between a readable picture and
+ * a thicket.
+ */
+function transpose(
+  bands: Map<number, Id[]>,
+  bandCount: number,
+  byId: ReadonlyMap<Id, Skill>,
+  order: Map<Id, number>,
+): void {
+  const edgesBetween = (upper: number): { from: Id; to: Id }[] => {
+    const lower = bands.get(upper + 1) ?? [];
+    const pairs: { from: Id; to: Id }[] = [];
+    for (const id of lower) {
+      for (const required of byId.get(id)?.requires ?? []) {
+        if (order.has(required)) pairs.push({ from: required, to: id });
+      }
+    }
+    return pairs;
+  };
+
+  const count = (pairs: readonly { from: Id; to: Id }[]): number => {
+    let total = 0;
+    for (let i = 0; i < pairs.length; i += 1) {
+      for (let j = i + 1; j < pairs.length; j += 1) {
+        const a = pairs[i]!;
+        const b = pairs[j]!;
+        const from = (order.get(a.from) ?? 0) - (order.get(b.from) ?? 0);
+        const to = (order.get(a.to) ?? 0) - (order.get(b.to) ?? 0);
+        if (from * to < 0) total += 1;
+      }
+    }
+    return total;
+  };
+
+  // Cheap enough to recompute: these graphs are tens of nodes, not thousands.
+  const localCrossings = (depth: number): number =>
+    count(edgesBetween(depth - 1)) + count(edgesBetween(depth));
+
+  let improved = true;
+  let guard = 0;
+  while (improved && guard < 32) {
+    improved = false;
+    guard += 1;
+
+    for (let depth = 0; depth < bandCount; depth += 1) {
+      const band = [...(bands.get(depth) ?? [])].sort(
+        (a, b) => (order.get(a) ?? 0) - (order.get(b) ?? 0),
+      );
+
+      for (let i = 0; i + 1 < band.length; i += 1) {
+        const left = band[i]!;
+        const right = band[i + 1]!;
+        const before = localCrossings(depth);
+
+        order.set(left, order.get(left)! + 1);
+        order.set(right, order.get(right)! - 1);
+
+        if (localCrossings(depth) < before) {
+          band[i] = right;
+          band[i + 1] = left;
+          improved = true;
+        } else {
+          order.set(left, order.get(left)! - 1);
+          order.set(right, order.get(right)! + 1);
+        }
+      }
+    }
+  }
 }
 
 export function layoutSkillGraph(skills: readonly Skill[]): SkillGraph {

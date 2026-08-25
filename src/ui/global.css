@@ -25,6 +25,16 @@
   box-sizing: border-box;
 }
 
+/* No list in this app is prose — every one is a layout container. Making each
+   remember `list-style: none` is how three of them ended up with browser
+   bullets and an indent nobody asked for. */
+ul,
+ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
 body {
   margin: 0;
   background: var(--bg);
@@ -222,9 +232,6 @@ label {
 /* --- Project list -------------------------------------------------------- */
 
 .project-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
@@ -453,9 +460,6 @@ label {
 /* --- Quests and skills ---------------------------------------------------- */
 
 .quest-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
@@ -502,9 +506,6 @@ label {
 /* --- Chips ---------------------------------------------------------------- */
 
 .chip-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
@@ -567,9 +568,6 @@ label {
 
 .checkpoints,
 .history {
-  list-style: none;
-  margin: 0;
-  padding: 0;
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
@@ -788,4 +786,62 @@ button.small {
   background: var(--surface-raised);
   color: var(--muted);
   font-weight: 600;
+}
+
+/* --- Today rows ----------------------------------------------------------- */
+
+.quest__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+/* One list, so the reason a row is there has to be on the row. */
+.tag {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.tag--active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.tag--rusty {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.quest--active {
+  border-left: 3px solid var(--accent);
+}
+
+.quest--rusty {
+  border-left: 3px solid var(--danger);
+}
+
+/* --- Map dragging --------------------------------------------------------- */
+
+.map__canvas--dragging {
+  cursor: grabbing;
+}
+
+.map__node--dragging {
+  /* Lifted while it is being re-slotted, so it is obvious which one moves. */
+  opacity: 0.9;
+  filter: drop-shadow(0 3px 6px rgb(0 0 0 / 0.45));
+}
+
+.map__node--dragging .map__node-edge {
+  stroke: var(--accent);
+  stroke-width: 3;
+  opacity: 1;
 }

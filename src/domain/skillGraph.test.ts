@@ -1,17 +1,17 @@
 import { describe, expect, it } from 'vitest';
 
-import { layoutSkillGraph, prerequisiteClosure } from './skillGraph';
+import { layoutSkillGraph, prerequisiteClosure, type GraphNode } from './skillGraph';
 import type { Skill } from './training';
 
+/** A quest by construction: it has a checkpoint (ADR 0014). */
 function skill(id: string, requires: string[] = [], name = id): Skill {
   return {
     id,
     name,
-    kind: 'quest',
     discipline: 'pole',
     refs: [],
     ladder: 'wantIt',
-    checkpoints: [],
+    checkpoints: [{ id: `${id}-c`, text: 'do the thing', doneAt: null }],
     isActive: false,
     requires,
     createdAt: 0,
@@ -62,8 +62,8 @@ describe('layoutSkillGraph', () => {
     const graph = layoutSkillGraph([
       skill('invert'),
       skill('gemini', ['invert']),
-      { ...skill('grip'), kind: 'practice' },
-      { ...skill('handstand'), kind: 'practice' },
+      { ...skill('grip'), checkpoints: [] },
+      { ...skill('handstand'), checkpoints: [] },
     ]);
 
     expect(graph.loose.sort()).toEqual(['grip', 'handstand']);
@@ -144,7 +144,11 @@ describe('the shipped curriculum, laid out', () => {
 
     const skills: Skill[] = inPrerequisiteOrder(STARTING_PATH).map((item) => ({
       ...skill(item.key, [...(item.requires ?? [])], item.name),
-      kind: item.kind,
+      checkpoints: (item.checkpoints ?? []).map((text, i) => ({
+        id: `${item.key}-${i}`,
+        text,
+        doneAt: null,
+      })),
     }));
 
     const graph = layoutSkillGraph(skills);
@@ -154,7 +158,9 @@ describe('the shipped curriculum, laid out', () => {
     // Conditioning has no prerequisites and nothing depends on it.
     expect(graph.loose.length).toBeGreaterThanOrEqual(5);
     // Every quest with a prerequisite is on the map, not in the loose bucket.
-    const questsWithRequires = skills.filter((s) => s.kind === 'quest' && s.requires.length > 0);
+    const questsWithRequires = skills.filter(
+      (s) => s.checkpoints.length > 0 && s.requires.length > 0,
+    );
     for (const quest of questsWithRequires) {
       expect(graph.loose).not.toContain(quest.id);
     }
@@ -164,7 +170,11 @@ describe('the shipped curriculum, laid out', () => {
     const { POLE_PATH: STARTING_PATH, inPrerequisiteOrder } = await import('./trainingSeed');
     const skills: Skill[] = inPrerequisiteOrder(STARTING_PATH).map((item) => ({
       ...skill(item.key, [...(item.requires ?? [])], item.name),
-      kind: item.kind,
+      checkpoints: (item.checkpoints ?? []).map((text, i) => ({
+        id: `${item.key}-${i}`,
+        text,
+        doneAt: null,
+      })),
     }));
 
     const graph = layoutSkillGraph(skills);
@@ -215,5 +225,105 @@ describe('crossing reduction', () => {
     expect(order('r1')).toBeLessThan(order('r2'));
     // Without barycentre ordering these would sort alphabetically and cross.
     expect(order('childOfR1')).toBeLessThan(order('childOfR2'));
+  });
+});
+
+describe('manual arrangement', () => {
+  const band = () => [
+    skill('root'),
+    skill('a', ['root'], 'Alpha'),
+    skill('b', ['root'], 'Bravo'),
+    skill('c', ['root'], 'Charlie'),
+  ];
+
+  const orderOf = (graph: ReturnType<typeof layoutSkillGraph>, id: string) =>
+    graph.nodes.find((node) => node.id === id)?.order;
+
+  it('puts a dragged node where it was dropped', () => {
+    const skills = band();
+    // Charlie dragged to the front of its band.
+    skills[3] = { ...skills[3]!, mapOrder: 0 };
+    skills[1] = { ...skills[1]!, mapOrder: 1 };
+    skills[2] = { ...skills[2]!, mapOrder: 2 };
+
+    const graph = layoutSkillGraph(skills);
+    expect(orderOf(graph, 'c')).toBe(0);
+    expect(orderOf(graph, 'a')).toBe(1);
+    expect(orderOf(graph, 'b')).toBe(2);
+  });
+
+  it('leaves untouched bands to the heuristic', () => {
+    const skills = band();
+    const graph = layoutSkillGraph(skills);
+    // Nothing has mapOrder, so the band is still a clean 0..n-1.
+    expect([orderOf(graph, 'a'), orderOf(graph, 'b'), orderOf(graph, 'c')].sort()).toEqual([
+      0, 1, 2,
+    ]);
+  });
+
+  it('mixes a dragged node with ones that were never touched', () => {
+    const skills = band();
+    skills[3] = { ...skills[3]!, mapOrder: -1 };
+
+    const graph = layoutSkillGraph(skills);
+    expect(orderOf(graph, 'c')).toBe(0);
+    // The rest keep a distinct slot each rather than collapsing onto one.
+    const slots = ['a', 'b', 'c'].map((id) => orderOf(graph, id));
+    expect(new Set(slots).size).toBe(3);
+  });
+
+  it('cannot drag a node out of its band — depth stays derived from requires', () => {
+    const skills = [
+      skill('root'),
+      { ...skill('child', ['root']), mapOrder: 99 },
+    ];
+    const graph = layoutSkillGraph(skills);
+    expect(graph.nodes.find((n) => n.id === 'root')?.depth).toBe(0);
+    expect(graph.nodes.find((n) => n.id === 'child')?.depth).toBe(1);
+  });
+});
+
+describe('crossing count on the shipped curricula', () => {
+  /** Pairs of edges between the same two bands that cross each other. */
+  function crossings(skills: Skill[]): number {
+    const graph = layoutSkillGraph(skills);
+    const position = new Map(graph.nodes.map((node) => [node.id, node]));
+    const edges = graph.edges
+      .map((edge) => ({ a: position.get(edge.from), b: position.get(edge.to) }))
+      .filter((edge): edge is { a: GraphNode; b: GraphNode } => !!edge.a && !!edge.b);
+
+    let total = 0;
+    for (let i = 0; i < edges.length; i += 1) {
+      for (let j = i + 1; j < edges.length; j += 1) {
+        const e = edges[i]!;
+        const f = edges[j]!;
+        if (e.a.depth !== f.a.depth) continue;
+        if ((e.a.order - f.a.order) * (e.b.order - f.b.order) < 0) total += 1;
+      }
+    }
+    return total;
+  }
+
+  async function seeded(which: 'POLE_PATH' | 'SKATEBOARD_PATH'): Promise<Skill[]> {
+    const seed = await import('./trainingSeed');
+    return seed.inPrerequisiteOrder(seed[which]).map((item) => ({
+      ...skill(item.key, [...(item.requires ?? [])], item.name),
+      checkpoints: (item.checkpoints ?? []).map((text, i) => ({
+        id: `${item.key}-${i}`,
+        text,
+        doneAt: null,
+      })),
+    }));
+  }
+
+  // Barycentre alone left 1 and 8; the transpose pass takes them to 0 and 7.
+  // These are upper bounds, so a layout change that improves them still passes
+  // and one that quietly makes the picture worse does not.
+  it('draws the pole map with no crossings at all', async () => {
+    expect(crossings(await seeded('POLE_PATH'))).toBe(0);
+  });
+
+  it('keeps the skate map — the wide one — at or under seven', async () => {
+    expect(crossings(await seeded('SKATEBOARD_PATH'))).toBeLessThanOrEqual(7);
   });
 });

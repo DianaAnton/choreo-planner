@@ -168,6 +168,17 @@ export class InMemoryTrainingRepository implements TrainingRepository {
     for (const listener of this.#settingsListeners) listener(this.#settings);
   }
 
+  async removeSkills(ids: readonly Id[]): Promise<void> {
+    for (const id of ids) {
+      this.#skills.delete(id);
+      this.#images.delete(id);
+      this.#emitImage(id);
+    }
+
+    // One emit for the batch, mirroring the Firestore commit.
+    this.#emitSkills();
+  }
+
   // --- Sessions ------------------------------------------------------------
 
   #sessionsSince(since: DateKey): Session[] {

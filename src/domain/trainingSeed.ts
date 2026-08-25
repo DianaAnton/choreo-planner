@@ -19,13 +19,10 @@
  * most common way a skill looks finished and is not.
  */
 
-import type { SkillKind } from './training';
-
 export interface SeedSkill {
   /** Stable within this file only; real ids are minted on write. */
   key: string;
   name: string;
-  kind: SkillKind;
   category?: string;
   /** Keys of prerequisites, resolved to ids as the seed is written. */
   requires?: readonly string[];
@@ -39,7 +36,6 @@ export const POLE_PATH: readonly SeedSkill[] = [
   {
     key: 'fireman',
     name: 'Fireman spin',
-    kind: 'quest',
     category: 'spin',
     checkpoints: [
       'Spin down under control, both sides',
@@ -51,7 +47,6 @@ export const POLE_PATH: readonly SeedSkill[] = [
   {
     key: 'backhook',
     name: 'Back hook spin',
-    kind: 'quest',
     category: 'spin',
     requires: ['fireman'],
     checkpoints: [
@@ -64,7 +59,6 @@ export const POLE_PATH: readonly SeedSkill[] = [
   {
     key: 'chair',
     name: 'Chair spin',
-    kind: 'quest',
     category: 'spin',
     requires: ['fireman'],
     checkpoints: [
@@ -77,7 +71,6 @@ export const POLE_PATH: readonly SeedSkill[] = [
   {
     key: 'attitude',
     name: 'Attitude spin',
-    kind: 'quest',
     category: 'spin',
     requires: ['backhook'],
     checkpoints: [
@@ -92,7 +85,6 @@ export const POLE_PATH: readonly SeedSkill[] = [
   {
     key: 'climb',
     name: 'Basic climb',
-    kind: 'quest',
     category: 'climb',
     checkpoints: [
       'Three climbs in a row without resting',
@@ -104,7 +96,6 @@ export const POLE_PATH: readonly SeedSkill[] = [
   {
     key: 'bracket',
     name: 'Bracket hold',
-    kind: 'quest',
     category: 'climb',
     requires: ['climb'],
     checkpoints: [
@@ -119,7 +110,6 @@ export const POLE_PATH: readonly SeedSkill[] = [
   {
     key: 'invert',
     name: 'Basic invert',
-    kind: 'quest',
     category: 'invert',
     requires: ['climb'],
     checkpoints: [
@@ -133,7 +123,6 @@ export const POLE_PATH: readonly SeedSkill[] = [
   {
     key: 'gemini',
     name: 'Gemini',
-    kind: 'quest',
     category: 'invert',
     requires: ['invert'],
     checkpoints: [
@@ -147,7 +136,6 @@ export const POLE_PATH: readonly SeedSkill[] = [
   {
     key: 'scorpio',
     name: 'Scorpio',
-    kind: 'quest',
     category: 'invert',
     requires: ['gemini'],
     checkpoints: [
@@ -160,7 +148,6 @@ export const POLE_PATH: readonly SeedSkill[] = [
   {
     key: 'jade',
     name: 'Jade split',
-    kind: 'quest',
     category: 'invert',
     requires: ['gemini'],
     checkpoints: [
@@ -173,7 +160,6 @@ export const POLE_PATH: readonly SeedSkill[] = [
   {
     key: 'superman',
     name: 'Superman',
-    kind: 'quest',
     category: 'invert',
     requires: ['invert'],
     checkpoints: [
@@ -186,7 +172,6 @@ export const POLE_PATH: readonly SeedSkill[] = [
   {
     key: 'butterfly',
     name: 'Butterfly',
-    kind: 'quest',
     category: 'invert',
     requires: ['gemini'],
     checkpoints: [
@@ -200,7 +185,6 @@ export const POLE_PATH: readonly SeedSkill[] = [
   {
     key: 'extended-butterfly',
     name: 'Extended butterfly',
-    kind: 'quest',
     category: 'invert',
     requires: ['butterfly'],
     checkpoints: [
@@ -214,7 +198,6 @@ export const POLE_PATH: readonly SeedSkill[] = [
   {
     key: 'ayesha',
     name: 'Ayesha',
-    kind: 'quest',
     category: 'invert',
     requires: ['extended-butterfly'],
     checkpoints: [
@@ -230,7 +213,6 @@ export const POLE_PATH: readonly SeedSkill[] = [
   {
     key: 'shoulder-mount-prep',
     name: 'Shoulder mount prep',
-    kind: 'quest',
     category: 'invert',
     requires: ['invert'],
     checkpoints: [
@@ -243,7 +225,6 @@ export const POLE_PATH: readonly SeedSkill[] = [
   {
     key: 'shoulder-mount',
     name: 'Shoulder mount',
-    kind: 'quest',
     category: 'invert',
     requires: ['shoulder-mount-prep'],
     checkpoints: [
@@ -256,7 +237,6 @@ export const POLE_PATH: readonly SeedSkill[] = [
   {
     key: 'brass-monkey',
     name: 'Brass monkey',
-    kind: 'quest',
     category: 'invert',
     requires: ['shoulder-mount'],
     checkpoints: [
@@ -271,7 +251,6 @@ export const POLE_PATH: readonly SeedSkill[] = [
   {
     key: 'handspring-prep',
     name: 'Handspring prep',
-    kind: 'quest',
     category: 'invert',
     requires: ['butterfly'],
     checkpoints: [
@@ -284,7 +263,6 @@ export const POLE_PATH: readonly SeedSkill[] = [
   {
     key: 'handspring',
     name: 'Handspring',
-    kind: 'quest',
     category: 'invert',
     requires: ['handspring-prep'],
     checkpoints: [
@@ -298,7 +276,6 @@ export const POLE_PATH: readonly SeedSkill[] = [
   {
     key: 'iron-x',
     name: 'Iron X',
-    kind: 'quest',
     category: 'invert',
     requires: ['handspring'],
     checkpoints: [
@@ -314,62 +291,53 @@ export const POLE_PATH: readonly SeedSkill[] = [
   {
     key: 'grip',
     name: 'Grip conditioning',
-    kind: 'practice',
     category: 'conditioning',
     metric: { unit: 'seconds' },
   },
   {
     key: 'scapular',
     name: 'Scapular conditioning',
-    kind: 'practice',
     category: 'conditioning',
     metric: { unit: 'reps' },
   },
   {
     key: 'handstand',
     name: 'Handstand',
-    kind: 'practice',
     category: 'conditioning',
     metric: { unit: 'seconds' },
   },
   {
     key: 'hollow',
     name: 'Hollow hold',
-    kind: 'practice',
     category: 'conditioning',
     metric: { unit: 'seconds' },
   },
   {
     key: 'pull-ups',
     name: 'Pull-ups',
-    kind: 'practice',
     category: 'conditioning',
     metric: { unit: 'reps' },
   },
   {
     key: 'shoulder-mobility',
     name: 'Shoulder mobility',
-    kind: 'practice',
     category: 'flexibility',
   },
   {
     key: 'hamstrings',
     name: 'Hamstring flexibility',
-    kind: 'practice',
     category: 'flexibility',
     metric: { unit: 'seconds' },
   },
   {
     key: 'bridge',
     name: 'Bridge',
-    kind: 'practice',
     category: 'flexibility',
     metric: { unit: 'seconds' },
   },
   {
     key: 'pointed-toes',
     name: 'Feet and toes',
-    kind: 'practice',
     category: 'flexibility',
   },
 ];
@@ -387,7 +355,6 @@ export const SKATEBOARD_PATH: readonly SeedSkill[] = [
   {
     key: 'push',
     name: 'Pushing and riding',
-    kind: 'quest',
     category: 'basics',
     checkpoints: [
       'Push and roll the length of the park without stepping off',
@@ -399,7 +366,6 @@ export const SKATEBOARD_PATH: readonly SeedSkill[] = [
   {
     key: 'kickturn',
     name: 'Kickturn',
-    kind: 'quest',
     category: 'basics',
     requires: ['push'],
     checkpoints: [
@@ -411,7 +377,6 @@ export const SKATEBOARD_PATH: readonly SeedSkill[] = [
   {
     key: 'tictac',
     name: 'Tic-tac',
-    kind: 'quest',
     category: 'basics',
     requires: ['push'],
     checkpoints: [
@@ -422,7 +387,6 @@ export const SKATEBOARD_PATH: readonly SeedSkill[] = [
   {
     key: 'fakie',
     name: 'Rolling fakie',
-    kind: 'quest',
     category: 'basics',
     requires: ['push'],
     checkpoints: [
@@ -436,7 +400,6 @@ export const SKATEBOARD_PATH: readonly SeedSkill[] = [
   {
     key: 'ollie',
     name: 'Ollie (stationary)',
-    kind: 'quest',
     category: 'flatground',
     requires: ['push'],
     checkpoints: [
@@ -449,7 +412,6 @@ export const SKATEBOARD_PATH: readonly SeedSkill[] = [
   {
     key: 'rolling-ollie',
     name: 'Rolling ollie',
-    kind: 'quest',
     category: 'flatground',
     requires: ['ollie'],
     checkpoints: [
@@ -462,7 +424,6 @@ export const SKATEBOARD_PATH: readonly SeedSkill[] = [
   {
     key: 'ollie-curb',
     name: 'Ollie up a curb',
-    kind: 'quest',
     category: 'flatground',
     requires: ['rolling-ollie'],
     checkpoints: [
@@ -474,7 +435,6 @@ export const SKATEBOARD_PATH: readonly SeedSkill[] = [
   {
     key: 'shuvit',
     name: 'Shuvit',
-    kind: 'quest',
     category: 'flatground',
     requires: ['push'],
     checkpoints: [
@@ -486,7 +446,6 @@ export const SKATEBOARD_PATH: readonly SeedSkill[] = [
   {
     key: 'pop-shuvit',
     name: 'Pop shuvit',
-    kind: 'quest',
     category: 'flatground',
     requires: ['ollie', 'shuvit'],
     checkpoints: [
@@ -498,7 +457,6 @@ export const SKATEBOARD_PATH: readonly SeedSkill[] = [
   {
     key: 'fs-pop-shuvit',
     name: 'Frontside pop shuvit',
-    kind: 'quest',
     category: 'flatground',
     requires: ['pop-shuvit'],
     checkpoints: ['Land 8 of 10 rolling', 'Shoulders stay square'],
@@ -506,7 +464,6 @@ export const SKATEBOARD_PATH: readonly SeedSkill[] = [
   {
     key: 'kickflip',
     name: 'Kickflip',
-    kind: 'quest',
     category: 'flatground',
     requires: ['rolling-ollie'],
     checkpoints: [
@@ -519,7 +476,6 @@ export const SKATEBOARD_PATH: readonly SeedSkill[] = [
   {
     key: 'heelflip',
     name: 'Heelflip',
-    kind: 'quest',
     category: 'flatground',
     requires: ['rolling-ollie'],
     checkpoints: ['Board completes the flip', 'Land 8 of 10 rolling away'],
@@ -527,7 +483,6 @@ export const SKATEBOARD_PATH: readonly SeedSkill[] = [
   {
     key: 'varial-kickflip',
     name: 'Varial kickflip',
-    kind: 'quest',
     category: 'flatground',
     requires: ['kickflip', 'pop-shuvit'],
     checkpoints: ['Board flips and rotates together', 'Land 8 of 10 rolling away'],
@@ -537,7 +492,6 @@ export const SKATEBOARD_PATH: readonly SeedSkill[] = [
   {
     key: 'manual',
     name: 'Manual',
-    kind: 'quest',
     category: 'flatground',
     requires: ['push'],
     checkpoints: [
@@ -549,7 +503,6 @@ export const SKATEBOARD_PATH: readonly SeedSkill[] = [
   {
     key: 'nose-manual',
     name: 'Nose manual',
-    kind: 'quest',
     category: 'flatground',
     requires: ['manual'],
     checkpoints: ['Hold for two board lengths', 'Come down under control, 8 of 10'],
@@ -559,7 +512,6 @@ export const SKATEBOARD_PATH: readonly SeedSkill[] = [
   {
     key: 'boardslide',
     name: 'Boardslide',
-    kind: 'quest',
     category: 'grind',
     requires: ['rolling-ollie'],
     checkpoints: [
@@ -571,7 +523,6 @@ export const SKATEBOARD_PATH: readonly SeedSkill[] = [
   {
     key: 'fifty-fifty',
     name: '50-50 grind',
-    kind: 'quest',
     category: 'grind',
     requires: ['rolling-ollie'],
     checkpoints: [
@@ -583,7 +534,6 @@ export const SKATEBOARD_PATH: readonly SeedSkill[] = [
   {
     key: 'nosegrind',
     name: 'Nosegrind',
-    kind: 'quest',
     category: 'grind',
     requires: ['fifty-fifty'],
     checkpoints: ['Front truck holds the ledge', 'Land 8 of 10 rolling away'],
@@ -593,7 +543,6 @@ export const SKATEBOARD_PATH: readonly SeedSkill[] = [
   {
     key: 'dropin',
     name: 'Drop in',
-    kind: 'quest',
     category: 'transition',
     requires: ['kickturn'],
     checkpoints: [
@@ -606,7 +555,6 @@ export const SKATEBOARD_PATH: readonly SeedSkill[] = [
   {
     key: 'rock-to-fakie',
     name: 'Rock to fakie',
-    kind: 'quest',
     category: 'transition',
     requires: ['dropin', 'fakie'],
     checkpoints: ['Front trucks clear the coping', 'Come back in fakie, 8 of 10'],
@@ -614,7 +562,6 @@ export const SKATEBOARD_PATH: readonly SeedSkill[] = [
   {
     key: 'pump',
     name: 'Pumping transition',
-    kind: 'quest',
     category: 'transition',
     requires: ['dropin'],
     checkpoints: ['Gain speed without pushing', 'Three pumps back to back'],
@@ -624,34 +571,29 @@ export const SKATEBOARD_PATH: readonly SeedSkill[] = [
   {
     key: 'switch-riding',
     name: 'Switch stance riding',
-    kind: 'practice',
     category: 'conditioning',
     metric: { unit: 'seconds' },
   },
   {
     key: 'bailing',
     name: 'Falling and bailing',
-    kind: 'practice',
     category: 'conditioning',
   },
   {
     key: 'ankles',
     name: 'Ankle and knee prep',
-    kind: 'practice',
     category: 'conditioning',
     metric: { unit: 'reps' },
   },
   {
     key: 'balance',
     name: 'Balance board',
-    kind: 'practice',
     category: 'conditioning',
     metric: { unit: 'seconds' },
   },
   {
     key: 'flatground-consistency',
     name: 'Flatground consistency',
-    kind: 'practice',
     category: 'conditioning',
     metric: { unit: 'reps' },
   },

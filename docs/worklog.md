@@ -644,3 +644,167 @@ not a rider on this one.
 
 lint · typecheck · 164 unit tests (141 → 164) · rules · build. Both maps
 checked by printing their bands. Still no browser here.
+
+---
+
+## 2026-08-25 — Map usability, and a reset button
+
+Branch: `feat/map-usability-and-reset`. Four things from using it.
+
+### Mouse click did nothing on the map; tap worked
+
+A real bug, and an instructive one. `usePanZoom` called `setPointerCapture` on
+**pointerdown**, which retargets the subsequent `click` to the capturing element
+— so the node's own `onClick` never ran. Touch survived because the browser
+synthesises its click differently.
+
+Nothing is captured now until the pointer has travelled 5px. Below that it is a
+click and reaches the node untouched; above it, a drag starts and captures. The
+same threshold is what makes node dragging possible at all.
+
+### "Still has the duplicate quest/practice screens"
+
+The second time this was raised, so the first reading was wrong. It was the
+**Today** screen: *Working on* (quests) and *Ten minutes spare* (practice) —
+the app's internal taxonomy leaking onto the surface. Standing there with ten
+minutes free, you do not want to know which of three boxes your options are
+filed in.
+
+Today is one list now, ordered by priority — active quests, then rusty, then
+whatever is stalest — with the reason as a tag on each row. The Skills list also
+lost its own *Working on* section, which duplicated Today's.
+
+### Overlapping connections — and two wrong "fixes" before the right one
+
+First attempt: swap the barycentre heuristic's mean for a median and raise the
+sweeps from 4 to 8. Both sounded right. Measured, on the skate map:
+
+```text
+mean   sweeps=2/4/8/16 → 8 crossings   (identical; it converges by 2)
+median sweeps=2/4/8/16 → 10 crossings
+```
+
+So the "improvement" was a **regression**, and the sweep count did nothing at
+all. The existing code was already at its local optimum. Reverted.
+
+What actually helped was the pass barycentre is normally paired with:
+**transpose** — walk each band swapping adjacent pairs whenever the swap removes
+more crossings than it creates. Barycentre has no notion of a crossing, only of
+average position; this is the pass that counts them.
+
+```text
+before: pole 1, skate 8  (total 9)
+after:  pole 0, skate 7  (total 7)
+```
+
+Locked in with a test asserting those as upper bounds, so a future layout change
+that quietly makes the picture worse fails.
+
+Edge endpoints are also fanned across a node's edge rather than all leaving its
+centre — four edges from one parent drawn from the same point are one thick line
+until they separate, which is most of what "overlapping" looks like up close.
+
+And nodes can now be dragged sideways to re-slot them, persisted as
+`Skill.mapOrder`. Horizontal only: which band a node sits in comes from
+`requires`, and a node dragged above its own prerequisite would make the picture
+lie.
+
+### A reset button
+
+Re-seeding while the curriculum is being tuned meant deleting thirty skills one
+confirmation at a time, which is not a workflow anyone follows — they stop
+re-seeding and test against stale data instead. `removeSkills` deletes a
+discipline's skills and their pictures in batched commits. Sessions are left
+alone: the log records what you did, and deleting the skills does not mean those
+days did not happen.
+
+### The mistake worth writing down
+
+Midway through, `git checkout src/domain/skillGraph.ts` was used to undo a
+temporary measurement hack — on a file that still held unstaged real work. It
+took the `mapOrder` support with it, and only the failing tests caught it.
+Stage before experimenting on a file, or copy it aside; `git checkout` on a
+dirty file is not an undo.
+
+### "Does this work on both pole and skate?"
+
+A fair question to be asked rather than assured, so it got answered with tests.
+Two things turned up.
+
+**Category order was alphabetical on the key**, which read sensibly for pole
+only by luck — `climb, invert, spin` happens to be a reasonable order and
+`basics, flatground, grind, transition` happens to be too. It now uses the order
+the profile already declares, which is deliberate in both:
+
+```text
+Pole:       Inverts and holds(14) > Spins(4) > Climbs(2) > Conditioning(5) > Flexibility(4)
+Skateboard: Getting rolling(4) > Flatground(11) > Grinds and slides(3) > Transition(3) > Body prep(5)
+```
+
+**The Today ordering lived inside the component**, so nothing tested it against
+anything. It moved to `domain/training.ts` as `todayList` — it is an ordering
+rule, and the repo's own rule is that those live in the domain.
+
+`bothDisciplines.test.ts` now runs the same eight behaviours against both
+shipped curricula through `describe.each`: the Today list leads with what you
+chose, never repeats a skill, surfaces the conditioning menu, flags what was
+earned and left, applies the same three-quest cap, and ships no quest without a
+checkpoint that would leave it unactivatable.
+
+### Bullets on the skills list
+
+Three lists rendered browser bullets and an indent: the skills list, the refs
+list and the inbox, all of which use `<ul className="stack">`. Five other lists
+looked right only because each had remembered `list-style: none` for itself —
+which is exactly why this kept slipping through.
+
+Fixed once in the base styles rather than a sixth time per class. No list in
+this app is prose; every one is a layout container.
+
+(The cleanup pass that removed the five now-redundant declarations also matched
+the base rule it had just written, leaving `ul, ol {}`. Caught because the
+replacement count was five against four known lists — the arithmetic not
+adding up was the only signal.)
+
+### Quest/practice, the fourth time
+
+Raised four separate times over the course of building this, which is enough
+signal to stop patching the symptom. The check that should have been run much
+earlier: across all 55 seeded skills, in both disciplines, `kind === 'quest'`
+and "has at least one checkpoint" agreed in **every single case**. Zero
+mismatches.
+
+That is not a coincidence in the data — it is what the two things mean. Writing
+down what would count as progress *is* deciding something is a quest. Asking for
+a kind as well was asking the same question twice and storing both answers so
+they could disagree later.
+
+So `kind` is derived now ([ADR 0014](decisions/0014-kind-is-derived.md)), all
+three toggles are gone, and `canPromoteToKind` went with them — a promoted item
+has no checkpoints, so it is practice, and the rule could never fire. The
+concern it guarded is structurally impossible rather than checked.
+
+Everything ADR 0011 §2 argued for survives: the cap still governs quests only,
+conditioning still cannot compete for the three slots, and a handstand still
+becomes a quest — by writing a checkpoint against it.
+
+One subtlety with a test against it: a quest whose checkpoints are all *ticked*
+stays a quest. `checkpoints.length`, not the open count. Otherwise finishing one
+would silently reclassify it as conditioning and drop it out of the cap.
+
+### One view
+
+The Map/List toggle is gone. The list was a second rendering of the same data
+that discarded the only structure worth having, and two views means every change
+has to be made twice and look right in both. The category grouping went with it;
+if that is missed, group the map's loose chips rather than bringing the list
+back.
+
+### Verified
+
+lint · typecheck · 194 unit tests · 26 rules tests · build.
+`ul,ol{list-style:none;margin:0;padding:0}` confirmed present in the built CSS,
+not just the source. The kind/checkpoint agreement across both seeds was
+measured, not assumed — it is what the whole change rests on.
+Crossing counts measured rather than assumed, in both directions. Both
+disciplines' grouping and Today list printed and read, not inferred.
