@@ -13,6 +13,10 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
         navigateFallback: '/index.html',
+        // Workbox keeps precaches from older revisions by default. On a phone
+        // with a small quota that is dead weight, and it makes "am I on the old
+        // build?" harder to answer than it needs to be.
+        cleanupOutdatedCaches: true,
       },
       manifest: {
         name: 'Choreo Planner',
