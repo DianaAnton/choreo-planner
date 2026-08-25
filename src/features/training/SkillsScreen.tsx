@@ -58,6 +58,8 @@ export function SkillsScreen() {
           Add a skill
         </button>
       )}
+
+      <ResetPath />
     </div>
   );
 }
@@ -73,11 +75,10 @@ export function SkillsScreen() {
  */
 function SkillList({ skills }: { skills: Skill[] }) {
   const { profile } = useTraining();
-  const active = skills.filter((skill) => skill.isActive);
-  const rest = skills.filter((skill) => !skill.isActive);
-
+  // Everything in one grouping. "What am I working on" is the Today screen's
+  // question; repeating it here made two screens that mostly agreed.
   const groups = new Map<string, Skill[]>();
-  for (const skill of rest) {
+  for (const skill of skills) {
     const key = skill.category ?? 'other';
     groups.set(key, [...(groups.get(key) ?? []), skill]);
   }
@@ -91,17 +92,6 @@ function SkillList({ skills }: { skills: Skill[] }) {
 
   return (
     <div className="stack">
-      {active.length > 0 && (
-        <section className="stack">
-          <h2>Working on</h2>
-          <ul className="stack">
-            {active.map((skill) => (
-              <SkillRow key={skill.id} skill={skill} />
-            ))}
-          </ul>
-        </section>
-      )}
-
       {ordered.map(([category, members]) => (
         <section key={category} className="stack">
           <h2>{categoryLabel(profile, category)}</h2>
@@ -255,5 +245,68 @@ function SeedPrompt() {
         </button>
       </div>
     </section>
+  );
+}
+
+/**
+ * Clear every skill in the active discipline.
+ *
+ * This exists because the curriculum is still being tuned: re-seeding after a
+ * change means deleting thirty skills, and doing that one confirmation at a
+ * time is not a workflow anyone follows — they just stop re-seeding and test
+ * against stale data instead.
+ *
+ * Two taps, and the second one names what it is about to destroy. Sessions are
+ * left alone: the log is a record of what you did, and deleting the skills does
+ * not mean those days did not happen.
+ */
+function ResetPath() {
+  const { skills, profile, actions } = useTraining();
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
+
+  if (skills.length === 0) return null;
+
+  if (!confirming) {
+    return (
+      <button type="button" className="ghost small" onClick={() => setConfirming(true)}>
+        Reset {profile.label.toLowerCase()} path
+      </button>
+    );
+  }
+
+  return (
+    <div className="card stack">
+      <p className="small">
+        Delete all {skills.length} {profile.label.toLowerCase()} skills, their checkpoints and
+        their pictures? Your session history stays.
+      </p>
+      {failure && <p className="field-error">{failure}</p>}
+      <div className="form__actions">
+        <button
+          type="button"
+          className="danger"
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            setFailure(null);
+            try {
+              await actions.resetDiscipline();
+              setConfirming(false);
+            } catch (error) {
+              setFailure(error instanceof Error ? error.message : String(error));
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          {busy ? 'Deleting…' : `Delete ${skills.length}`}
+        </button>
+        <button type="button" className="ghost" onClick={() => setConfirming(false)} disabled={busy}>
+          Keep them
+        </button>
+      </div>
+    </div>
   );
 }

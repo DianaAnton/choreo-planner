@@ -182,6 +182,21 @@ export class FirestoreTrainingRepository implements TrainingRepository {
     await setDoc(this.#settings(), { activeDiscipline: disciplineId }, { merge: true });
   }
 
+  async removeSkills(ids: readonly Id[]): Promise<void> {
+    if (ids.length === 0) return;
+
+    // Two writes per skill — the document and its picture.
+    const perBatch = Math.floor(MAX_BATCH_WRITES / 2);
+    for (let start = 0; start < ids.length; start += perBatch) {
+      const batch = writeBatch(getDb());
+      for (const id of ids.slice(start, start + perBatch)) {
+        batch.delete(doc(this.#skills(), id));
+        batch.delete(doc(this.#images(), id));
+      }
+      await batch.commit();
+    }
+  }
+
   // --- Sessions ------------------------------------------------------------
 
   subscribeSessions(

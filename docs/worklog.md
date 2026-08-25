@@ -644,3 +644,89 @@ not a rider on this one.
 
 lint · typecheck · 164 unit tests (141 → 164) · rules · build. Both maps
 checked by printing their bands. Still no browser here.
+
+---
+
+## 2026-08-25 — Map usability, and a reset button
+
+Branch: `feat/map-usability-and-reset`. Four things from using it.
+
+### Mouse click did nothing on the map; tap worked
+
+A real bug, and an instructive one. `usePanZoom` called `setPointerCapture` on
+**pointerdown**, which retargets the subsequent `click` to the capturing element
+— so the node's own `onClick` never ran. Touch survived because the browser
+synthesises its click differently.
+
+Nothing is captured now until the pointer has travelled 5px. Below that it is a
+click and reaches the node untouched; above it, a drag starts and captures. The
+same threshold is what makes node dragging possible at all.
+
+### "Still has the duplicate quest/practice screens"
+
+The second time this was raised, so the first reading was wrong. It was the
+**Today** screen: *Working on* (quests) and *Ten minutes spare* (practice) —
+the app's internal taxonomy leaking onto the surface. Standing there with ten
+minutes free, you do not want to know which of three boxes your options are
+filed in.
+
+Today is one list now, ordered by priority — active quests, then rusty, then
+whatever is stalest — with the reason as a tag on each row. The Skills list also
+lost its own *Working on* section, which duplicated Today's.
+
+### Overlapping connections — and two wrong "fixes" before the right one
+
+First attempt: swap the barycentre heuristic's mean for a median and raise the
+sweeps from 4 to 8. Both sounded right. Measured, on the skate map:
+
+```text
+mean   sweeps=2/4/8/16 → 8 crossings   (identical; it converges by 2)
+median sweeps=2/4/8/16 → 10 crossings
+```
+
+So the "improvement" was a **regression**, and the sweep count did nothing at
+all. The existing code was already at its local optimum. Reverted.
+
+What actually helped was the pass barycentre is normally paired with:
+**transpose** — walk each band swapping adjacent pairs whenever the swap removes
+more crossings than it creates. Barycentre has no notion of a crossing, only of
+average position; this is the pass that counts them.
+
+```text
+before: pole 1, skate 8  (total 9)
+after:  pole 0, skate 7  (total 7)
+```
+
+Locked in with a test asserting those as upper bounds, so a future layout change
+that quietly makes the picture worse fails.
+
+Edge endpoints are also fanned across a node's edge rather than all leaving its
+centre — four edges from one parent drawn from the same point are one thick line
+until they separate, which is most of what "overlapping" looks like up close.
+
+And nodes can now be dragged sideways to re-slot them, persisted as
+`Skill.mapOrder`. Horizontal only: which band a node sits in comes from
+`requires`, and a node dragged above its own prerequisite would make the picture
+lie.
+
+### A reset button
+
+Re-seeding while the curriculum is being tuned meant deleting thirty skills one
+confirmation at a time, which is not a workflow anyone follows — they stop
+re-seeding and test against stale data instead. `removeSkills` deletes a
+discipline's skills and their pictures in batched commits. Sessions are left
+alone: the log records what you did, and deleting the skills does not mean those
+days did not happen.
+
+### The mistake worth writing down
+
+Midway through, `git checkout src/domain/skillGraph.ts` was used to undo a
+temporary measurement hack — on a file that still held unstaged real work. It
+took the `mapOrder` support with it, and only the failing tests caught it.
+Stage before experimenting on a file, or copy it aside; `git checkout` on a
+dirty file is not an undo.
+
+### Verified
+
+lint · typecheck · 174 unit tests (168 → 174) · build. Crossing counts measured
+rather than assumed, in both directions.

@@ -295,3 +295,64 @@ describe('skill images', () => {
     expect(seenB).not.toHaveBeenCalled();
   });
 });
+
+describe('resetting a discipline', () => {
+  let repo: InMemoryTrainingRepository;
+
+  beforeEach(() => {
+    repo = new InMemoryTrainingRepository(() => 1000);
+  });
+
+  it('deletes many skills and their pictures in one go', async () => {
+    const a = await repo.createSkill(quest);
+    const b = await repo.createSkill({ ...quest, name: 'Other' });
+    await repo.setSkillImage(a.id, 'data:image/jpeg;base64,/9j/4AAQ');
+
+    const skillsSeen = vi.fn();
+    const imageSeen = vi.fn();
+    repo.subscribeSkills('pole', skillsSeen);
+    repo.subscribeSkillImage(a.id, imageSeen);
+    skillsSeen.mockClear();
+
+    await repo.removeSkills([a.id, b.id]);
+
+    expect(skillsSeen.mock.lastCall?.[0]).toEqual([]);
+    expect(imageSeen.mock.lastCall?.[0]).toBeNull();
+    // One emit for the batch, mirroring the Firestore commit.
+    expect(skillsSeen).toHaveBeenCalledTimes(1);
+  });
+
+  it('leaves the other discipline alone', async () => {
+    const pole = await repo.createSkill(quest);
+    const skate = await repo.createSkill({ ...quest, name: 'Ollie', discipline: 'skateboard' });
+
+    await repo.removeSkills([pole.id]);
+
+    const seen = vi.fn();
+    repo.subscribeSkills('skateboard', seen);
+    expect(seen.mock.lastCall?.[0].map((s: { id: string }) => s.id)).toEqual([skate.id]);
+  });
+
+  it('leaves the session log alone — those days still happened', async () => {
+    const skill = await repo.createSkill(quest);
+    await repo.logSession(
+      { date: '2026-08-22', durationMin: 45, felt: 2, skillIds: [skill.id] },
+      [skill],
+    );
+
+    await repo.removeSkills([skill.id]);
+
+    const seen = vi.fn();
+    repo.subscribeSessions('2026-08-01', seen);
+    expect(seen.mock.lastCall?.[0]).toHaveLength(1);
+  });
+
+  it('does nothing for an empty list', async () => {
+    await repo.createSkill(quest);
+    await repo.removeSkills([]);
+
+    const seen = vi.fn();
+    repo.subscribeSkills('pole', seen);
+    expect(seen.mock.lastCall?.[0]).toHaveLength(1);
+  });
+});

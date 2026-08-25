@@ -163,6 +163,16 @@ export interface Skill {
   /** Optional prerequisite chain, e.g. the road to a named goal. */
   requires: Id[];
 
+  /**
+   * Manual slot within the node's band on the map, set by dragging.
+   *
+   * Only the horizontal position is yours to choose: which band a skill sits in
+   * is derived from `requires`, and letting a node be dragged above its own
+   * prerequisite would make the picture lie. Absent means "wherever the
+   * crossing-reduction pass puts it".
+   */
+  mapOrder?: number;
+
   createdAt: number;
   lastUsedAt?: number;
 }

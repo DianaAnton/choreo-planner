@@ -37,6 +37,10 @@ export interface TrainingActions {
   /** Writes the whole starting curriculum in one commit. */
   seedStartingPath(): Promise<Skill[]>;
   setActiveDiscipline(disciplineId: string): Promise<void>;
+  /** Clears every skill in the active discipline. Destructive; confirm first. */
+  resetDiscipline(): Promise<void>;
+  /** Manual slot within a band, set by dragging a node on the map. */
+  arrangeBand(ordered: readonly Id[]): Promise<void>;
   removeSkill(id: Id): Promise<void>;
   rename(skill: Skill, name: string): Promise<void>;
   setNotes(skill: Skill, notes: string): Promise<void>;
@@ -189,6 +193,16 @@ export function useTraining(): TrainingView {
       discardInboxItem: (id) => repository.removeInboxItem(id),
 
       setActiveDiscipline: (disciplineId) => repository.setActiveDiscipline(disciplineId),
+
+      // Scoped to what is on screen: the other discipline's skills are not in
+      // `skills` and must not be swept up by a reset of this one.
+      resetDiscipline: () => repository.removeSkills(skills.map((skill) => skill.id)),
+
+      arrangeBand: async (ordered) => {
+        await Promise.all(
+          ordered.map((id, index) => repository.updateSkill(id, { mapOrder: index })),
+        );
+      },
     }),
     [repository, discipline, skills, patch],
   );
