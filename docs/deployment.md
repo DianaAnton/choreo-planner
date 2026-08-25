@@ -114,3 +114,10 @@ Run through this once, in order, after `terraform apply`:
 - **Preview channels count against Hosting storage.** The 7-day expiry handles
   it; if you open many long-lived PRs, prune with
   `firebase hosting:channel:delete`.
+- **Google sign-in fails on preview channels with `auth/unauthorized-domain`,
+  and that cannot be fixed.** Each channel gets its own hostname
+  (`<project>--pr-4-a1b2c3d4.web.app`), Firebase authorized domains take no
+  wildcards, and the channel expires in 7 days. Anonymous auth works fine, so a
+  preview is still good for layout, for the PWA install prompt (it is HTTPS,
+  which a LAN dev server is not), and for anything that does not need an
+  account. Test sign-in on the live site.

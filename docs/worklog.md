@@ -397,3 +397,39 @@ ever showed one.
 Anyone already holding the stale worker has to clear it by hand — unregister in
 DevTools, close every tab, or delete and re-add the installed app. New code
 cannot reach a browser that will not fetch it.
+
+---
+
+## 2026-08-23 — `auth/unauthorized-domain` on a preview channel
+
+Branch: `docs/preview-channel-auth-limit`.
+
+Google sign-in failed on a deployed URL. Two wrong guesses before the right
+answer, both worth recording because the second was a bad method, not just a
+bad hypothesis.
+
+1. **Guessed the `authDomain` was mismatched** — the app is served from
+   `choreo-planner.web.app` while `VITE_FIREBASE_AUTH_DOMAIN` is
+   `choreo-planner.firebaseapp.com`, which does break sign-in on Safari in some
+   setups. Plausible, and wrong: `auth/unauthorized-domain` is thrown against
+   the *page's* hostname before any cross-origin handler is involved.
+2. **Read the authorized-domain list and reported it as empty.** The request had
+   actually failed 403 (identitytoolkit needs a quota project with local ADC)
+   and the parser swallowed the error into a default. Reporting a parsed
+   `(none)` from a response that was never checked for an error field is how a
+   diagnosis goes confidently backwards.
+
+With `x-goog-user-project` set, the real config: Google enabled with a client
+id, domains `localhost`, `choreo-planner.firebaseapp.com`,
+`choreo-planner.web.app`. Production was configured correctly the whole time —
+the failing URL was a **PR preview channel**, whose hostname is unique per PR
+and is not on the list.
+
+This cannot be fixed: authorized domains take no wildcards and channels expire
+in 7 days, so authorizing them by hand is tedious and pointless. Anonymous auth
+still works on a preview, so they remain useful for layout and for the PWA
+install prompt — a preview is HTTPS, which a LAN dev server is not.
+
+`firebase-setup.md` said the automatic domains were "all that's needed", which
+is true for production and actively misleading for previews. Corrected there
+and added to `deployment.md`'s gotcha list.

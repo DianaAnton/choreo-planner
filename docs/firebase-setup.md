@@ -123,9 +123,20 @@ Firebase console → **Authentication** → **Get started** → **Sign-in method
    OFF.** If it is on, an unsynced project can disappear after 30 days. See
    [ADR 0003](decisions/0003-auth-anonymous-plus-google.md).
 4. **Settings → Authorized domains** — `localhost` and the two Firebase Hosting
-   domains are added automatically, which is all that's needed: no custom domain
-   is planned. If you add one later, it must be registered here too or Google
-   sign-in will fail on it.
+   domains (`<project>.web.app`, `<project>.firebaseapp.com`) are added
+   automatically. A custom domain, if one is ever added, must be registered here
+   too or Google sign-in fails on it with `auth/unauthorized-domain`.
+
+   **Google sign-in does not work on PR preview channels, and cannot be made
+   to.** Every preview gets its own hostname
+   (`<project>--pr-4-a1b2c3d4.web.app`), authorized domains take no wildcards,
+   and channels expire after 7 days — so authorizing them by hand is both
+   tedious and pointless. Symptom is `auth/unauthorized-domain` on a URL that
+   looks almost right.
+
+   What previews *are* for: layout, the PWA install prompt (they are HTTPS,
+   which a LAN dev server is not), and anything anonymous auth can reach.
+   Sign-in gets tested on the live site.
 
 ---
 
