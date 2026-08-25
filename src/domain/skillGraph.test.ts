@@ -140,11 +140,10 @@ describe('the shipped curriculum, laid out', () => {
   it('produces a readable graph rather than a wall or a chain', async () => {
     // Guards the seed against edits that would make the map useless: a single
     // band (everything a root) or a single column (one long chain).
-    const { STARTING_PATH, inPrerequisiteOrder } = await import('./trainingSeed');
+    const { POLE_PATH: STARTING_PATH, inPrerequisiteOrder } = await import('./trainingSeed');
 
-    const idByKey = new Map(STARTING_PATH.map((item) => [item.key, item.key]));
     const skills: Skill[] = inPrerequisiteOrder(STARTING_PATH).map((item) => ({
-      ...skill(item.key, (item.requires ?? []).map((k) => idByKey.get(k) ?? k), item.name),
+      ...skill(item.key, [...(item.requires ?? [])], item.name),
       kind: item.kind,
     }));
 
@@ -162,7 +161,7 @@ describe('the shipped curriculum, laid out', () => {
   });
 
   it('places Ayesha below every step of its road', async () => {
-    const { STARTING_PATH, inPrerequisiteOrder } = await import('./trainingSeed');
+    const { POLE_PATH: STARTING_PATH, inPrerequisiteOrder } = await import('./trainingSeed');
     const skills: Skill[] = inPrerequisiteOrder(STARTING_PATH).map((item) => ({
       ...skill(item.key, [...(item.requires ?? [])], item.name),
       kind: item.kind,

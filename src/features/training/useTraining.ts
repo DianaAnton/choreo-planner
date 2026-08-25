@@ -19,7 +19,8 @@ import {
   type SkillKind,
   type SkillMetric,
 } from '../../domain/training';
-import { STARTING_PATH, inPrerequisiteOrder } from '../../domain/trainingSeed';
+import { inPrerequisiteOrder, startingPathFor } from '../../domain/trainingSeed';
+import type { DisciplineProfile } from '../../domain/discipline';
 import type { Id } from '../../domain/types';
 import { newId } from '../../lib/ids';
 import type {
@@ -35,6 +36,7 @@ export interface TrainingActions {
   createSkill(input: Omit<NewSkill, 'discipline'>): Promise<Skill>;
   /** Writes the whole starting curriculum in one commit. */
   seedStartingPath(): Promise<Skill[]>;
+  setActiveDiscipline(disciplineId: string): Promise<void>;
   removeSkill(id: Id): Promise<void>;
   rename(skill: Skill, name: string): Promise<void>;
   setNotes(skill: Skill, notes: string): Promise<void>;
@@ -67,6 +69,8 @@ export interface TrainingView {
   loading: boolean;
   error: Error | null;
   discipline: string;
+  /** Wording, categories and the cleanRep test for the active discipline. */
+  profile: DisciplineProfile;
   byId: ReadonlyMap<Id, Skill>;
   /** At most three, by construction. */
   quests: Skill[];
@@ -86,7 +90,8 @@ export function useTraining(): TrainingView {
     throw new Error('useTraining must be used inside <TrainingProvider>');
   }
 
-  const { repository, discipline, skills, sessions, inbox, loading, error } = context;
+  const { repository, profile, skills, sessions, inbox, loading, error } = context;
+  const discipline = profile.id;
 
   // Read from the wall clock rather than pinned in state — staleness measured
   // against a value frozen at mount would be wrong tomorrow — but bucketed to
@@ -107,7 +112,7 @@ export function useTraining(): TrainingView {
       seedStartingPath: () => {
         // Ids first, so `requires` can point at siblings that do not exist yet
         // and the whole graph lands in one commit rather than thirty.
-        const ordered = inPrerequisiteOrder(STARTING_PATH);
+        const ordered = inPrerequisiteOrder(startingPathFor(discipline));
         const idByKey = new Map(ordered.map((item) => [item.key, repository.newSkillId()]));
 
         return repository.createSkills(
@@ -182,6 +187,8 @@ export function useTraining(): TrainingView {
       },
 
       discardInboxItem: (id) => repository.removeInboxItem(id),
+
+      setActiveDiscipline: (disciplineId) => repository.setActiveDiscipline(disciplineId),
     }),
     [repository, discipline, skills, patch],
   );
@@ -195,6 +202,7 @@ export function useTraining(): TrainingView {
       loading,
       error,
       discipline,
+      profile,
       byId: new Map(skills.map((skill) => [skill.id, skill])),
       quests: activeQuests(skills),
       practice: practiceMenu(skills, now),
@@ -204,6 +212,6 @@ export function useTraining(): TrainingView {
       questSlotsLeft: activeQuestSlotsLeft(skills),
       actions,
     }),
-    [repository, skills, sessions, inbox, loading, error, discipline, now, today, actions],
+    [repository, skills, sessions, inbox, loading, error, discipline, profile, now, today, actions],
   );
 }

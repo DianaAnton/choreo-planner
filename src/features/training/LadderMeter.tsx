@@ -1,10 +1,6 @@
-import {
-  LADDER,
-  LADDER_DESCRIPTIONS,
-  LADDER_LABELS,
-  ladderIndex,
-  type LadderState,
-} from '../../domain/training';
+import { ladderDescriptionsFor, ladderLabelsFor } from '../../domain/discipline';
+import { LADDER, ladderIndex, type LadderState } from '../../domain/training';
+import { useTraining } from './useTraining';
 
 interface Props {
   state: LadderState;
@@ -18,6 +14,11 @@ interface Props {
  * visible — including the ones ahead.
  */
 export function LadderMeter({ state, onChange }: Props) {
+  // Wording is per discipline: a skater's terminal rung is "in a line", not
+  // "in a choreo". The ordinal is the same, which is the point.
+  const { profile } = useTraining();
+  const LADDER_LABELS = ladderLabelsFor(profile);
+  const LADDER_DESCRIPTIONS = ladderDescriptionsFor(profile);
   const current = ladderIndex(state);
 
   if (!onChange) {

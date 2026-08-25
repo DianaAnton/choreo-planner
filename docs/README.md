@@ -29,6 +29,7 @@ Everything about this project that isn't code.
 | [0010](decisions/0010-terraform-apply-in-ci.md) | Terraform applies in CI on merge to main |
 | [0011](decisions/0011-training-layer.md) | The training layer, built on the preset library |
 | [0012](decisions/0012-ship-a-starting-curriculum.md) | Ship a starting curriculum, and a map instead of a list |
+| [0013](decisions/0013-two-disciplines.md) | Two disciplines, and what that cost |
 
 ## Adding to this
 

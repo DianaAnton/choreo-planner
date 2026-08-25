@@ -2,7 +2,9 @@ import { Link, useNavigate, useParams } from 'react-router';
 
 import { AccountBar } from '../../features/auth';
 import { InstallPrompt } from '../../features/pwa';
+import { disciplines } from '../registry';
 import {
+  DisciplineSwitch,
   InboxScreen,
   LogSessionForm,
   SkillDetail,
@@ -17,7 +19,7 @@ import {
  * looks like it does.
  */
 function TrainingShell({ title, children }: { title: string; children: React.ReactNode }) {
-  const { inbox } = useTraining();
+  const { inbox, profile } = useTraining();
 
   return (
     <main className="shell">
@@ -32,8 +34,11 @@ function TrainingShell({ title, children }: { title: string; children: React.Rea
         <Link to="/training/inbox">
           Inbox{inbox.length > 0 && <span className="badge">{inbox.length}</span>}
         </Link>
-        <Link to="/">Choreos</Link>
+        {/* Pole-only: a skateboarder has no use for a choreography planner. */}
+        {profile.hasChoreo && <Link to="/">Choreos</Link>}
       </nav>
+
+      <DisciplineSwitch available={disciplines.all()} />
 
       <InstallPrompt />
 

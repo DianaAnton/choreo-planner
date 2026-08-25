@@ -35,6 +35,7 @@ import type {
   SkillPatch,
   TrainingRepository,
   Unsubscribe,
+  UserSettings,
 } from './types';
 
 /**
@@ -66,6 +67,10 @@ export class FirestoreTrainingRepository implements TrainingRepository {
 
   #inbox() {
     return collection(getDb(), 'users', this.uid, 'inbox');
+  }
+
+  #settings() {
+    return doc(getDb(), 'users', this.uid);
   }
 
   #images() {
@@ -159,6 +164,22 @@ export class FirestoreTrainingRepository implements TrainingRepository {
 
   async removeSkillImage(skillId: Id): Promise<void> {
     await deleteDoc(doc(this.#images(), skillId));
+  }
+
+  subscribeSettings(
+    onChange: (settings: UserSettings) => void,
+    onError: (error: Error) => void,
+  ): Unsubscribe {
+    return onSnapshot(
+      this.#settings(),
+      (snapshot) => onChange(snapshot.exists() ? (snapshot.data() as UserSettings) : {}),
+      onError,
+    );
+  }
+
+  async setActiveDiscipline(disciplineId: string): Promise<void> {
+    // Merge: the user document is shared with anything else that lands on it.
+    await setDoc(this.#settings(), { activeDiscipline: disciplineId }, { merge: true });
   }
 
   // --- Sessions ------------------------------------------------------------

@@ -60,6 +60,11 @@ export interface NewInboxItem {
 /** `id` and `createdAt` are set once, at creation, and never patched. */
 export type SkillPatch = Partial<Omit<Skill, 'id' | 'createdAt'>>;
 
+export interface UserSettings {
+  /** Absent until the user picks one; the app falls back to the first profile. */
+  activeDiscipline?: string;
+}
+
 /**
  * Skills, sessions and the capture inbox — all under `users/{uid}`, all
  * private. Subsumes the `PresetRepository` this used to be: a preset is a
@@ -127,6 +132,19 @@ export interface TrainingRepository {
   /** `dataUrl` must already be downscaled; see `toStorableImage`. */
   setSkillImage(skillId: Id, dataUrl: string): Promise<void>;
   removeSkillImage(skillId: Id): Promise<void>;
+
+  /**
+   * User-level settings, on the `users/{uid}` document itself. One field lives
+   * here today — which discipline is showing — and a whole port for one field
+   * is not earned yet. It is on the account rather than in local storage
+   * because on iOS an installed app and Safari have separate storage, and
+   * "which sport am I" is a fact about the person, not the device.
+   */
+  subscribeSettings(
+    onChange: (settings: UserSettings) => void,
+    onError: (error: Error) => void,
+  ): Unsubscribe;
+  setActiveDiscipline(disciplineId: string): Promise<void>;
 
   subscribeInbox(
     onChange: (items: InboxItem[]) => void,

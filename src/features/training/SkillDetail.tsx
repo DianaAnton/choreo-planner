@@ -1,9 +1,9 @@
 import { type FormEvent, useState } from 'react';
 import { Link } from 'react-router';
 
+import { describeCleanRep, ladderDescriptionsFor } from '../../domain/discipline';
 import {
   FELT_LABELS,
-  LADDER_DESCRIPTIONS,
   SKILL_KIND_LABELS,
   ladderOf,
   normalizeUrl,
@@ -25,7 +25,8 @@ interface Props {
  * mid-session: where am I, what is next, then the reference material.
  */
 export function SkillDetail({ skill }: Props) {
-  const { byId, sessions, actions } = useTraining();
+  const { byId, sessions, actions, profile } = useTraining();
+  const ladderDescriptions = ladderDescriptionsFor(profile);
   const [refusal, setRefusal] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
@@ -62,7 +63,10 @@ export function SkillDetail({ skill }: Props) {
           state={ladderOf(skill)}
           onChange={(next) => actions.setLadder(skill, next)}
         />
-        <p className="hint">{LADDER_DESCRIPTIONS[ladderOf(skill)]}</p>
+        <p className="hint">
+          {ladderDescriptions[ladderOf(skill)]}
+          {ladderOf(skill) === 'cleanRep' && ` ${describeCleanRep(profile.cleanRepTest)}`}
+        </p>
       </section>
 
       {skill.kind === 'quest' && (
