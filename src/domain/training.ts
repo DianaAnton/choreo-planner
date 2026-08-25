@@ -522,6 +522,45 @@ export function staleSkills(skills: readonly Skill[], now: number = Date.now()):
   return skills.filter((skill) => isStale(skill, now)).sort(byStaleness(now));
 }
 
+/** Why a skill is on the Today list. The order below is the priority. */
+export type TodayReason = 'active' | 'rusty' | 'stale';
+
+export interface TodayRow {
+  skill: Skill;
+  reason: TodayReason;
+}
+
+/**
+ * The Today screen, as one ordered list rather than three boxes.
+ *
+ * It used to be three sections — active quests, gone rusty, ten minutes spare —
+ * which is the app's own taxonomy of quest-versus-practice showing through.
+ * Standing there with ten minutes free you want one list in priority order and
+ * a reason next to each row, not to work out which box your options are filed
+ * in.
+ *
+ * Here rather than in the component because it is an ordering rule, and the
+ * same rule has to hold for every discipline.
+ */
+export function todayList(skills: readonly Skill[], now: number = Date.now()): TodayRow[] {
+  const rows: TodayRow[] = [];
+  const seen = new Set<Id>();
+
+  const push = (skill: Skill, reason: TodayReason) => {
+    if (seen.has(skill.id)) return;
+    seen.add(skill.id);
+    rows.push({ skill, reason });
+  };
+
+  // What you decided to work on, then what you are losing, then whatever has
+  // gone longest untouched.
+  for (const quest of activeQuests(skills)) push(quest, 'active');
+  for (const skill of staleSkills(skills, now)) push(skill, 'rusty');
+  for (const skill of practiceMenu(skills, now)) push(skill, 'stale');
+
+  return rows;
+}
+
 // --- Sessions --------------------------------------------------------------
 
 export function sessionsInWeekOf(

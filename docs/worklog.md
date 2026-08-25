@@ -726,7 +726,33 @@ took the `mapOrder` support with it, and only the failing tests caught it.
 Stage before experimenting on a file, or copy it aside; `git checkout` on a
 dirty file is not an undo.
 
+### "Does this work on both pole and skate?"
+
+A fair question to be asked rather than assured, so it got answered with tests.
+Two things turned up.
+
+**Category order was alphabetical on the key**, which read sensibly for pole
+only by luck — `climb, invert, spin` happens to be a reasonable order and
+`basics, flatground, grind, transition` happens to be too. It now uses the order
+the profile already declares, which is deliberate in both:
+
+```text
+Pole:       Inverts and holds(14) > Spins(4) > Climbs(2) > Conditioning(5) > Flexibility(4)
+Skateboard: Getting rolling(4) > Flatground(11) > Grinds and slides(3) > Transition(3) > Body prep(5)
+```
+
+**The Today ordering lived inside the component**, so nothing tested it against
+anything. It moved to `domain/training.ts` as `todayList` — it is an ordering
+rule, and the repo's own rule is that those live in the domain.
+
+`bothDisciplines.test.ts` now runs the same eight behaviours against both
+shipped curricula through `describe.each`: the Today list leads with what you
+chose, never repeats a skill, surfaces the conditioning menu, flags what was
+earned and left, applies the same three-quest cap, and ships no quest without a
+checkpoint that would leave it unactivatable.
+
 ### Verified
 
-lint · typecheck · 174 unit tests (168 → 174) · build. Crossing counts measured
-rather than assumed, in both directions.
+lint · typecheck · 190 unit tests (168 → 190) · 26 rules tests · build.
+Crossing counts measured rather than assumed, in both directions. Both
+disciplines' grouping and Today list printed and read, not inferred.

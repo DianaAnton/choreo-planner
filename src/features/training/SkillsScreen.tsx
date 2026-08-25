@@ -83,10 +83,16 @@ function SkillList({ skills }: { skills: Skill[] }) {
     groups.set(key, [...(groups.get(key) ?? []), skill]);
   }
 
+  // The profile already declares its categories in a deliberate order — pole
+  // leads with inverts, skateboarding with getting rolling. Sorting the keys
+  // alphabetically instead only read sensibly by luck, and only for pole.
+  const declared = profile.defaultCategories;
   const ordered = [...groups.entries()].sort(([a], [b]) => {
-    // Conditioning and flexibility last: they are the things you do around the
-    // thing you came to do.
-    const rank = (key: string) => (key === 'conditioning' ? 1 : key === 'flexibility' ? 2 : 0);
+    const rank = (key: string) => {
+      const index = declared.indexOf(key);
+      // Anything the user invented sorts after everything the profile knows.
+      return index === -1 ? declared.length : index;
+    };
     return rank(a) - rank(b) || a.localeCompare(b);
   });
 

@@ -6,9 +6,10 @@ import {
   isStale,
   ladderOf,
   nextCheckpoint,
+  todayList,
   type Skill,
+  type TodayReason,
 } from '../../domain/training';
-import type { Id } from '../../domain/types';
 import { LadderMeter } from './LadderMeter';
 import { useTraining } from './useTraining';
 
@@ -28,23 +29,10 @@ import { useTraining } from './useTraining';
  * against Phase 2.5 in docs/plan.md.
  */
 export function TodayScreen() {
-  const { skills, quests, practice, stale, inbox, daysTrainedThisWeek, weeklyTarget, loading, error } =
-    useTraining();
+  const { skills, inbox, daysTrainedThisWeek, weeklyTarget, loading, error } = useTraining();
 
   const now = Date.now();
-  const rusty = stale.filter((skill) => !quests.some((quest) => quest.id === skill.id));
-
-  const seen = new Set<Id>();
-  const rows: { skill: Skill; reason: Reason }[] = [];
-  const push = (skill: Skill, reason: Reason) => {
-    if (seen.has(skill.id)) return;
-    seen.add(skill.id);
-    rows.push({ skill, reason });
-  };
-
-  for (const quest of quests) push(quest, 'active');
-  for (const skill of rusty) push(skill, 'rusty');
-  for (const skill of practice) push(skill, 'stale');
+  const rows = todayList(skills, now);
 
   return (
     <div className="stack">
@@ -106,9 +94,7 @@ export function TodayScreen() {
   );
 }
 
-type Reason = 'active' | 'rusty' | 'stale';
-
-function TodayRow({ skill, reason, now }: { skill: Skill; reason: Reason; now: number }) {
+function TodayRow({ skill, reason, now }: { skill: Skill; reason: TodayReason; now: number }) {
   const next = nextCheckpoint(skill);
   const { done, total } = checkpointProgress(skill);
   const isQuest = skill.kind === 'quest';
@@ -153,7 +139,7 @@ function TodayRow({ skill, reason, now }: { skill: Skill; reason: Reason; now: n
   );
 }
 
-function reasonLabel(reason: Reason, skill: Skill, now: number): string {
+function reasonLabel(reason: TodayReason, skill: Skill, now: number): string {
   if (reason === 'active') return 'working on';
   if (reason === 'rusty') return 'rusty';
   return isStale(skill, now) ? 'rusty' : 'ten minutes';
