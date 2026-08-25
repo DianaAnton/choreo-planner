@@ -766,10 +766,45 @@ the base rule it had just written, leaving `ul, ol {}`. Caught because the
 replacement count was five against four known lists — the arithmetic not
 adding up was the only signal.)
 
+### Quest/practice, the fourth time
+
+Raised four separate times over the course of building this, which is enough
+signal to stop patching the symptom. The check that should have been run much
+earlier: across all 55 seeded skills, in both disciplines, `kind === 'quest'`
+and "has at least one checkpoint" agreed in **every single case**. Zero
+mismatches.
+
+That is not a coincidence in the data — it is what the two things mean. Writing
+down what would count as progress *is* deciding something is a quest. Asking for
+a kind as well was asking the same question twice and storing both answers so
+they could disagree later.
+
+So `kind` is derived now ([ADR 0014](decisions/0014-kind-is-derived.md)), all
+three toggles are gone, and `canPromoteToKind` went with them — a promoted item
+has no checkpoints, so it is practice, and the rule could never fire. The
+concern it guarded is structurally impossible rather than checked.
+
+Everything ADR 0011 §2 argued for survives: the cap still governs quests only,
+conditioning still cannot compete for the three slots, and a handstand still
+becomes a quest — by writing a checkpoint against it.
+
+One subtlety with a test against it: a quest whose checkpoints are all *ticked*
+stays a quest. `checkpoints.length`, not the open count. Otherwise finishing one
+would silently reclassify it as conditioning and drop it out of the cap.
+
+### One view
+
+The Map/List toggle is gone. The list was a second rendering of the same data
+that discarded the only structure worth having, and two views means every change
+has to be made twice and look right in both. The category grouping went with it;
+if that is missed, group the map's loose chips rather than bringing the list
+back.
+
 ### Verified
 
-lint · typecheck · 190 unit tests (168 → 190) · 26 rules tests · build.
+lint · typecheck · 194 unit tests · 26 rules tests · build.
 `ul,ol{list-style:none;margin:0;padding:0}` confirmed present in the built CSS,
-not just the source.
+not just the source. The kind/checkpoint agreement across both seeds was
+measured, not assumed — it is what the whole change rests on.
 Crossing counts measured rather than assumed, in both directions. Both
 disciplines' grouping and Today list printed and read, not inferred.

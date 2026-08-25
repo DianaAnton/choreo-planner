@@ -4,6 +4,8 @@ import { POLE_PATH, SKATEBOARD_PATH, inPrerequisiteOrder, type SeedSkill } from 
 import {
   activeQuests,
   canActivateQuest,
+  isPractice,
+  isQuest,
   createCheckpoint,
   practiceMenu,
   todayList,
@@ -26,7 +28,6 @@ function build(path: readonly SeedSkill[], discipline: string): Skill[] {
   return inPrerequisiteOrder(path).map((item) => ({
     id: item.key,
     name: item.name,
-    kind: item.kind,
     discipline,
     refs: [],
     ladder: 'wantIt',
@@ -47,7 +48,7 @@ const curricula = [
 describe.each(curricula)('%s', (_name, skills) => {
   it('offers a Today list that leads with what you chose to work on', () => {
     const withActive = skills.map((skill, index) =>
-      index === 0 ? { ...skill, isActive: skill.kind === 'quest' } : skill,
+      index === 0 ? { ...skill, isActive: isQuest(skill) } : skill,
     );
 
     const rows = todayList(withActive, NOW);
@@ -72,12 +73,12 @@ describe.each(curricula)('%s', (_name, skills) => {
   it('surfaces the conditioning as the ten-minutes menu', () => {
     const menu = practiceMenu(skills, NOW);
     expect(menu.length).toBeGreaterThanOrEqual(4);
-    expect(menu.every((skill) => skill.kind === 'practice')).toBe(true);
+    expect(menu.every((skill) => isPractice(skill))).toBe(true);
   });
 
   it('flags a skill that was earned and then left', () => {
     const rusty = skills.map((skill) =>
-      skill.kind === 'quest'
+      isQuest(skill)
         ? { ...skill, ladder: 'cleanRep' as const, lastUsedAt: NOW - 60 * DAY }
         : skill,
     );
@@ -86,7 +87,7 @@ describe.each(curricula)('%s', (_name, skills) => {
   });
 
   it('applies the same three-quest cap', () => {
-    const quests = skills.filter((skill) => skill.kind === 'quest');
+    const quests = skills.filter((skill) => isQuest(skill));
     const active = quests.slice(0, 3).map((skill) => ({ ...skill, isActive: true }));
     const fourth = quests[3];
     expect(fourth).toBeDefined();
@@ -102,14 +103,14 @@ describe.each(curricula)('%s', (_name, skills) => {
   it('ships every quest with a checkpoint, so none is stuck unactivatable', () => {
     // A quest with no open checkpoint cannot be made active — that is the
     // mechanism, and a seed that shipped one would be a dead end.
-    const quests = skills.filter((skill) => skill.kind === 'quest');
+    const quests = skills.filter((skill) => isQuest(skill));
     for (const quest of quests) {
       expect(quest.checkpoints.length).toBeGreaterThan(0);
     }
   });
 
   it('lets a quest with an open checkpoint activate when there is room', () => {
-    const quest = skills.find((skill) => skill.kind === 'quest');
+    const quest = skills.find((skill) => isQuest(skill));
     expect(quest).toBeDefined();
     expect(canActivateQuest(quest!, skills)).toEqual({ ok: true });
   });

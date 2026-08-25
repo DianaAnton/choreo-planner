@@ -3,8 +3,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { sessionTimeMs, type Skill } from '../domain/training';
 import { InMemoryTrainingRepository } from './InMemoryTrainingRepository';
 
-const quest = { name: 'Ayesha', kind: 'quest' as const, discipline: 'pole' };
-const practice = { name: 'Grip', kind: 'practice' as const, discipline: 'pole' };
+// A skill is a quest exactly when it has a checkpoint (ADR 0014); practice is
+// one without.
+const quest = {
+  name: 'Ayesha',
+  discipline: 'pole',
+  checkpoints: [{ id: 'c1', text: 'hold 5s', doneAt: null }],
+};
+const practice = { name: 'Grip', discipline: 'pole' };
 
 describe('InMemoryTrainingRepository', () => {
   let clock: number;
@@ -204,8 +210,8 @@ describe('batched skill creation', () => {
     const geminiId = repo.newSkillId();
 
     const created = await repo.createSkills([
-      { id: invertId, name: 'Basic invert', kind: 'quest', discipline: 'pole' },
-      { id: geminiId, name: 'Gemini', kind: 'quest', discipline: 'pole', requires: [invertId] },
+      { id: invertId, name: 'Basic invert', discipline: 'pole' },
+      { id: geminiId, name: 'Gemini', discipline: 'pole', requires: [invertId] },
     ]);
 
     expect(created.map((s) => s.id)).toEqual([invertId, geminiId]);
@@ -226,7 +232,6 @@ describe('batched skill creation', () => {
       ['a', 'b', 'c'].map((name) => ({
         id: repo.newSkillId(),
         name,
-        kind: 'quest' as const,
         discipline: 'pole',
       })),
     );

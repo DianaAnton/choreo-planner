@@ -1,11 +1,9 @@
 import { type FormEvent, useState } from 'react';
 
 import {
-  SKILL_KIND_LABELS,
   validateInboxItem,
   validateNewSkill,
   type InboxItem,
-  type SkillKind,
   type TrainingFieldError,
 } from '../../domain/training';
 import { useTraining } from './useTraining';
@@ -126,9 +124,8 @@ function InboxRow({ item, onDiscard }: { item: InboxItem; onDiscard(): Promise<v
 }
 
 function PromoteForm({ item, onDone }: { item: InboxItem; onDone(): void }) {
-  const { actions, questSlotsLeft } = useTraining();
+  const { actions } = useTraining();
   const [name, setName] = useState('');
-  const [kind, setKind] = useState<SkillKind>('quest');
   const [errors, setErrors] = useState<TrainingFieldError[]>([]);
   const [refusal, setRefusal] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -145,7 +142,9 @@ function PromoteForm({ item, onDone }: { item: InboxItem; onDone(): void }) {
     try {
       // The cap is checked in the domain, not here — this screen only renders
       // the refusal it is handed.
-      const result = await actions.promoteInboxItem(item, { name, kind });
+      // No kind question: a promoted item has no checkpoints yet, so it is
+      // practice until one is written (ADR 0014).
+      const result = await actions.promoteInboxItem(item, { name });
       if (!result.ok) {
         setRefusal(result.message);
         return;
@@ -168,23 +167,6 @@ function PromoteForm({ item, onDone }: { item: InboxItem; onDone(): void }) {
         aria-invalid={errors.length > 0}
       />
       {errors[0] && <p className="field-error">{errors[0].message}</p>}
-
-      <div className="chip-row">
-        {(['quest', 'practice'] as const).map((option) => (
-          <button
-            key={option}
-            type="button"
-            className={`chip chip--button${kind === option ? ' chip--on' : ''}`}
-            aria-pressed={kind === option}
-            onClick={() => setKind(option)}
-          >
-            {SKILL_KIND_LABELS[option]}
-          </button>
-        ))}
-      </div>
-      {kind === 'quest' && (
-        <p className="hint">{questSlotsLeft} of 3 quest slots free</p>
-      )}
 
       {refusal && (
         <p className="notice notice--error" role="alert">

@@ -14,10 +14,11 @@ describe.each(Object.entries(STARTING_PATHS))('the %s curriculum', (_id, STARTIN
   it('ships checkpoints on every quest — ADR 0012 reversed the empty-seed decision', () => {
     // An empty tracker put the whole cost of starting on the blank screen. A
     // seeded quest with no checkpoint could not even be activated.
-    const questsWithout = STARTING_PATH.filter(
-      (item) => item.kind === 'quest' && (item.checkpoints?.length ?? 0) === 0,
-    );
-    expect(questsWithout.map((item) => item.key)).toEqual([]);
+    // A seeded skill is a quest exactly when it ships checkpoints (ADR 0014),
+    // so this now asserts the shape of the seed rather than a field agreeing
+    // with another field.
+    const quests = STARTING_PATH.filter((item) => (item.checkpoints?.length ?? 0) > 0);
+    expect(quests.length).toBeGreaterThanOrEqual(STARTING_PATH.length / 2);
   });
 
   it('ships no reference links — never invent a URL someone will tap at a pole', () => {
@@ -56,7 +57,7 @@ describe.each(Object.entries(STARTING_PATHS))('the %s curriculum', (_id, STARTIN
 
   it('only puts prerequisites on quests — practice has no endpoint to gate', () => {
     for (const item of STARTING_PATH) {
-      if (item.kind === 'practice') expect(item.requires ?? []).toEqual([]);
+      if ((item.checkpoints?.length ?? 0) === 0) expect(item.requires ?? []).toEqual([]);
     }
   });
 
@@ -79,14 +80,14 @@ describe.each(Object.entries(STARTING_PATHS))('the %s curriculum', (_id, STARTIN
 
   it('refuses a cycle rather than looping forever', () => {
     const cyclic: SeedSkill[] = [
-      { key: 'a', name: 'A', kind: 'quest', requires: ['b'] },
-      { key: 'b', name: 'B', kind: 'quest', requires: ['a'] },
+      { key: 'a', name: 'A', requires: ['b'] },
+      { key: 'b', name: 'B', requires: ['a'] },
     ];
     expect(() => inPrerequisiteOrder(cyclic)).toThrow(/cycle or a missing prerequisite/);
   });
 
   it('refuses a prerequisite that is not in the seed', () => {
-    const dangling: SeedSkill[] = [{ key: 'a', name: 'A', kind: 'quest', requires: ['ghost'] }];
+    const dangling: SeedSkill[] = [{ key: 'a', name: 'A', requires: ['ghost'] }];
     expect(() => inPrerequisiteOrder(dangling)).toThrow();
   });
 });

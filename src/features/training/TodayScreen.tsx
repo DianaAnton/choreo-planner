@@ -4,6 +4,7 @@ import {
   checkpointProgress,
   daysSinceUsed,
   isStale,
+  isQuest,
   ladderOf,
   nextCheckpoint,
   todayList,
@@ -97,7 +98,7 @@ export function TodayScreen() {
 function TodayRow({ skill, reason, now }: { skill: Skill; reason: TodayReason; now: number }) {
   const next = nextCheckpoint(skill);
   const { done, total } = checkpointProgress(skill);
-  const isQuest = skill.kind === 'quest';
+  const quest = isQuest(skill);
 
   return (
     <li className={`card quest quest--${reason}`}>
@@ -108,7 +109,7 @@ function TodayRow({ skill, reason, now }: { skill: Skill; reason: TodayReason; n
         <span className={`tag tag--${reason}`}>{reasonLabel(reason, skill, now)}</span>
       </div>
 
-      {isQuest && <LadderMeter state={ladderOf(skill)} />}
+      {quest && <LadderMeter state={ladderOf(skill)} />}
 
       {/* Only active quests carry a next step; for everything else the row is
           the whole message and a second line would be padding. */}

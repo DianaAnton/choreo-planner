@@ -3,15 +3,15 @@ import { describe, expect, it } from 'vitest';
 import { layoutSkillGraph, prerequisiteClosure, type GraphNode } from './skillGraph';
 import type { Skill } from './training';
 
+/** A quest by construction: it has a checkpoint (ADR 0014). */
 function skill(id: string, requires: string[] = [], name = id): Skill {
   return {
     id,
     name,
-    kind: 'quest',
     discipline: 'pole',
     refs: [],
     ladder: 'wantIt',
-    checkpoints: [],
+    checkpoints: [{ id: `${id}-c`, text: 'do the thing', doneAt: null }],
     isActive: false,
     requires,
     createdAt: 0,
@@ -62,8 +62,8 @@ describe('layoutSkillGraph', () => {
     const graph = layoutSkillGraph([
       skill('invert'),
       skill('gemini', ['invert']),
-      { ...skill('grip'), kind: 'practice' },
-      { ...skill('handstand'), kind: 'practice' },
+      { ...skill('grip'), checkpoints: [] },
+      { ...skill('handstand'), checkpoints: [] },
     ]);
 
     expect(graph.loose.sort()).toEqual(['grip', 'handstand']);
@@ -144,7 +144,11 @@ describe('the shipped curriculum, laid out', () => {
 
     const skills: Skill[] = inPrerequisiteOrder(STARTING_PATH).map((item) => ({
       ...skill(item.key, [...(item.requires ?? [])], item.name),
-      kind: item.kind,
+      checkpoints: (item.checkpoints ?? []).map((text, i) => ({
+        id: `${item.key}-${i}`,
+        text,
+        doneAt: null,
+      })),
     }));
 
     const graph = layoutSkillGraph(skills);
@@ -154,7 +158,9 @@ describe('the shipped curriculum, laid out', () => {
     // Conditioning has no prerequisites and nothing depends on it.
     expect(graph.loose.length).toBeGreaterThanOrEqual(5);
     // Every quest with a prerequisite is on the map, not in the loose bucket.
-    const questsWithRequires = skills.filter((s) => s.kind === 'quest' && s.requires.length > 0);
+    const questsWithRequires = skills.filter(
+      (s) => s.checkpoints.length > 0 && s.requires.length > 0,
+    );
     for (const quest of questsWithRequires) {
       expect(graph.loose).not.toContain(quest.id);
     }
@@ -164,7 +170,11 @@ describe('the shipped curriculum, laid out', () => {
     const { POLE_PATH: STARTING_PATH, inPrerequisiteOrder } = await import('./trainingSeed');
     const skills: Skill[] = inPrerequisiteOrder(STARTING_PATH).map((item) => ({
       ...skill(item.key, [...(item.requires ?? [])], item.name),
-      kind: item.kind,
+      checkpoints: (item.checkpoints ?? []).map((text, i) => ({
+        id: `${item.key}-${i}`,
+        text,
+        doneAt: null,
+      })),
     }));
 
     const graph = layoutSkillGraph(skills);
@@ -298,7 +308,11 @@ describe('crossing count on the shipped curricula', () => {
     const seed = await import('./trainingSeed');
     return seed.inPrerequisiteOrder(seed[which]).map((item) => ({
       ...skill(item.key, [...(item.requires ?? [])], item.name),
-      kind: item.kind,
+      checkpoints: (item.checkpoints ?? []).map((text, i) => ({
+        id: `${item.key}-${i}`,
+        text,
+        doneAt: null,
+      })),
     }));
   }
 

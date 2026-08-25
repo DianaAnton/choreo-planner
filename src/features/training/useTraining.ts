@@ -5,7 +5,6 @@ import {
   activeQuestSlotsLeft,
   activeQuests,
   canActivateQuest,
-  canPromoteToKind,
   createCheckpoint,
   practiceMenu,
   staleSkills,
@@ -16,7 +15,6 @@ import {
   type LadderState,
   type Session,
   type Skill,
-  type SkillKind,
   type SkillMetric,
 } from '../../domain/training';
 import { inPrerequisiteOrder, startingPathFor } from '../../domain/trainingSeed';
@@ -45,7 +43,6 @@ export interface TrainingActions {
   rename(skill: Skill, name: string): Promise<void>;
   setNotes(skill: Skill, notes: string): Promise<void>;
   setLadder(skill: Skill, ladder: LadderState): Promise<void>;
-  setKind(skill: Skill, kind: SkillKind): Promise<void>;
   addCheckpoint(skill: Skill, text: string): Promise<void>;
   toggleCheckpoint(skill: Skill, checkpointId: Id): Promise<void>;
   removeCheckpoint(skill: Skill, checkpointId: Id): Promise<void>;
@@ -123,7 +120,6 @@ export function useTraining(): TrainingView {
           ordered.map((item) => ({
             id: idByKey.get(item.key) ?? repository.newSkillId(),
             name: item.name,
-            kind: item.kind,
             discipline,
             ...(item.category ? { category: item.category } : {}),
             ...(item.metric ? { metric: { ...item.metric, best: 0, bestAt: Date.now() } } : {}),
@@ -139,11 +135,6 @@ export function useTraining(): TrainingView {
       rename: (skill, name) => patch(skill, { name: name.trim() }),
       setNotes: (skill, notes) => patch(skill, { notes: notes.trim() }),
       setLadder: (skill, ladder) => patch(skill, { ladder }),
-
-      // The ladder is kept across a kind change (see Skill.ladder): flipping a
-      // quest to practice and back must not erase months of progress.
-      setKind: (skill, kind) =>
-        patch(skill, kind === 'practice' ? { kind, isActive: false } : { kind }),
 
       addCheckpoint: (skill, text) =>
         patch(skill, { checkpoints: [...skill.checkpoints, createCheckpoint(text, newId())] }),
@@ -183,9 +174,9 @@ export function useTraining(): TrainingView {
       addInboxItem: (input) => repository.addInboxItem(input),
 
       promoteInboxItem: async (item, input) => {
-        const check = canPromoteToKind(input.kind, skills);
-        if (!check.ok) return check;
-
+        // A promoted item arrives with no checkpoints, so it is practice, which
+        // is uncapped — the cap bites later, when you write a checkpoint against
+        // it and try to activate it (ADR 0014).
         const skill = await repository.promoteInboxItem(item, { ...input, discipline });
         return { ok: true, skill };
       },

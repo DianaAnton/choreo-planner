@@ -109,14 +109,21 @@ export function holdsForBar(heldMs: number, barDurationMs: number, minHoldMs: nu
  * terminal state; practice is maintenance and has none. The WIP cap governs
  * quests only — conditioning must not compete for the same three slots.
  *
- * Mutable: a handstand may start as practice and become a quest.
+ * **Derived, not stored, and never asked for.** ADR 0011 made this a field the
+ * user set with a toggle at every point a skill could be created. It was
+ * redundant the whole time: across all 55 seeded skills, "is a quest" and "has
+ * checkpoints" agreed exactly — because writing down what would count as
+ * progress *is* what makes something a quest. Asking as well was asking the
+ * same question twice. See ADR 0014.
+ *
+ * A handstand still starts as practice and becomes a quest: by writing a
+ * checkpoint against it, rather than by flipping a switch.
  */
 export type SkillKind = 'quest' | 'practice';
 
-export const SKILL_KIND_LABELS: Record<SkillKind, string> = {
-  quest: 'Quest',
-  practice: 'Practice',
-};
+export function kindOf(skill: Pick<Skill, 'checkpoints'>): SkillKind {
+  return skill.checkpoints.length > 0 ? 'quest' : 'practice';
+}
 
 export interface Checkpoint {
   id: Id;
@@ -142,7 +149,6 @@ export interface SkillMetric {
 export interface Skill {
   id: Id;
   name: string;
-  kind: SkillKind;
   /** Free-form, seeded from DisciplineProfile.defaultCategories. */
   category?: string;
   discipline: string;
@@ -346,11 +352,11 @@ export function sessionTimeMs(session: Pick<Session, 'date'>): number {
 // --- Reading a skill -------------------------------------------------------
 
 export function isQuest(skill: Skill): boolean {
-  return skill.kind === 'quest';
+  return kindOf(skill) === 'quest';
 }
 
 export function isPractice(skill: Skill): boolean {
-  return skill.kind === 'practice';
+  return kindOf(skill) === 'practice';
 }
 
 /** A quest's ladder, defaulting for a practice skill that has never had one. */
@@ -431,33 +437,6 @@ export function canActivateQuest(skill: Skill, allSkills: readonly Skill[]): Act
 
 export function activeQuestSlotsLeft(skills: readonly Skill[]): number {
   return Math.max(0, MAX_ACTIVE_QUESTS - activeQuests(skills).length);
-}
-
-/**
- * Whether a captured idea may become a quest right now.
- *
- * The cap blocks *promotion*, not just activation. A new quest parked as
- * inactive would satisfy the letter of the cap and defeat its purpose: the
- * inbox is precisely where "a shinier one on Thursday" enters, and admitting it
- * only moves the pile somewhere the cap cannot see.
- *
- * Practice is uncapped, so promoting to practice is always allowed.
- */
-export function canPromoteToKind(kind: SkillKind, skills: readonly Skill[]): ActivationCheck {
-  if (kind === 'practice') return { ok: true };
-
-  const active = activeQuests(skills);
-  if (active.length >= MAX_ACTIVE_QUESTS) {
-    return {
-      ok: false,
-      reason: 'wipCapReached',
-      message:
-        `${MAX_ACTIVE_QUESTS} quests are already active (${active.map((q) => q.name).join(', ')}). ` +
-        'Park one, or save this as practice instead.',
-    };
-  }
-
-  return { ok: true };
 }
 
 /** Prerequisites not yet at `cleanRep` — the reason a goal is still out of reach. */
@@ -644,7 +623,6 @@ export interface TrainingFieldError {
 
 export interface NewSkillInput {
   name: string;
-  kind: SkillKind;
   discipline: string;
   category?: string;
   notes?: string;
@@ -678,7 +656,6 @@ export function createSkill(input: NewSkillInput, now: number = Date.now()): Omi
 
   return {
     name: input.name.trim(),
-    kind: input.kind,
     discipline: input.discipline,
     // Spread rather than `category: undefined` — exactOptionalPropertyTypes
     // rejects the latter and Firestore would store an explicit null.
@@ -810,7 +787,7 @@ export function createInboxItem(
 /** Promoting an inbox item to a skill: the URL becomes the skill's first ref. */
 export function skillFromInboxItem(
   item: InboxItem,
-  input: Pick<NewSkillInput, 'name' | 'kind' | 'discipline'> & {
+  input: Pick<NewSkillInput, 'name' | 'discipline'> & {
     checkpoints?: readonly Checkpoint[];
   },
   now: number = Date.now(),

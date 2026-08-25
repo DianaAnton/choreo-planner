@@ -1,31 +1,24 @@
 import { type FormEvent, useState } from 'react';
-import { Link } from 'react-router';
 
 import {
-  SKILL_KIND_LABELS,
-  checkpointProgress,
-  daysSinceUsed,
-  ladderOf,
   validateNewSkill,
-  type Skill,
-  type SkillKind,
   type TrainingFieldError,
 } from '../../domain/training';
-import { categoryLabel } from '../../domain/discipline';
 import { startingPathFor } from '../../domain/trainingSeed';
-import { LadderMeter } from './LadderMeter';
 import { SkillMap } from './SkillMap';
 import { useTraining } from './useTraining';
 
-type View = 'map' | 'list';
-
 /**
- * The map is the default (ADR 0012 §3). The list stays for adding a skill and
- * for conditioning, which has no prerequisites and so no place in a graph.
+ * The map, and nothing else.
+ *
+ * There was a Map/List toggle. The list was a second rendering of the same
+ * data that threw away the only structure worth having — and two views means
+ * every change has to be made twice and look right in both. The map shows
+ * everything: skills with prerequisites in the graph, and the rest as chips
+ * under it, grouped by category.
  */
 export function SkillsScreen() {
   const { skills, questSlotsLeft } = useTraining();
-  const [view, setView] = useState<View>('map');
   const [adding, setAdding] = useState(false);
 
   if (skills.length === 0) return <SeedPrompt />;
@@ -33,23 +26,11 @@ export function SkillsScreen() {
   return (
     <div className="stack">
       <div className="section-head">
-        <div className="chip-row">
-          {(['map', 'list'] as const).map((option) => (
-            <button
-              key={option}
-              type="button"
-              className={`chip chip--button${view === option ? ' chip--on' : ''}`}
-              aria-pressed={view === option}
-              onClick={() => setView(option)}
-            >
-              {option === 'map' ? 'Map' : 'List'}
-            </button>
-          ))}
-        </div>
+        <h2>Skills</h2>
         <span className="muted small">{questSlotsLeft} of 3 slots free</span>
       </div>
 
-      {view === 'map' ? <SkillMap /> : <SkillList skills={skills} />}
+      <SkillMap />
 
       {adding ? (
         <NewSkillForm onDone={() => setAdding(false)} />
@@ -64,90 +45,9 @@ export function SkillsScreen() {
   );
 }
 
-/**
- * One list, grouped by what the move *is* rather than split into Quests and
- * Practice — two sections of near-identical rows made the screen look twice as
- * long as it was and said nothing the rows did not already say. Kind is a
- * marker on the row now.
- *
- * Active quests come first regardless of category: they are the answer to "what
- * am I doing", and burying them under C-for-climb was silly.
- */
-function SkillList({ skills }: { skills: Skill[] }) {
-  const { profile } = useTraining();
-  // Everything in one grouping. "What am I working on" is the Today screen's
-  // question; repeating it here made two screens that mostly agreed.
-  const groups = new Map<string, Skill[]>();
-  for (const skill of skills) {
-    const key = skill.category ?? 'other';
-    groups.set(key, [...(groups.get(key) ?? []), skill]);
-  }
-
-  // The profile already declares its categories in a deliberate order — pole
-  // leads with inverts, skateboarding with getting rolling. Sorting the keys
-  // alphabetically instead only read sensibly by luck, and only for pole.
-  const declared = profile.defaultCategories;
-  const ordered = [...groups.entries()].sort(([a], [b]) => {
-    const rank = (key: string) => {
-      const index = declared.indexOf(key);
-      // Anything the user invented sorts after everything the profile knows.
-      return index === -1 ? declared.length : index;
-    };
-    return rank(a) - rank(b) || a.localeCompare(b);
-  });
-
-  return (
-    <div className="stack">
-      {ordered.map(([category, members]) => (
-        <section key={category} className="stack">
-          <h2>{categoryLabel(profile, category)}</h2>
-          <ul className="stack">
-            {[...members]
-              .sort((a, b) => a.name.localeCompare(b.name))
-              .map((skill) => (
-                <SkillRow key={skill.id} skill={skill} />
-              ))}
-          </ul>
-        </section>
-      ))}
-    </div>
-  );
-}
-
-function SkillRow({ skill }: { skill: Skill }) {
-  const { done, total } = checkpointProgress(skill);
-  const days = daysSinceUsed(skill);
-
-  return (
-    <li className="card skill-row">
-      <Link to={`/training/skills/${skill.id}`} className="skill-row__link">
-        <span className="skill-row__name">
-          {skill.name}
-          {skill.isActive && <span className="badge">active</span>}
-          {skill.kind === 'practice' && <span className="badge badge--quiet">practice</span>}
-        </span>
-        {skill.kind === 'quest' ? (
-          <LadderMeter state={ladderOf(skill)} />
-        ) : (
-          skill.metric && (
-            <span className="muted small">
-              best {skill.metric.best} {skill.metric.unit}
-            </span>
-          )
-        )}
-        <span className="muted small">
-          {skill.kind === 'quest' && total > 0 && `${done}/${total} · `}
-          {days === null ? 'never trained' : `${days}d since`}
-        </span>
-      </Link>
-    </li>
-  );
-}
-
 function NewSkillForm({ onDone }: { onDone(): void }) {
   const { actions } = useTraining();
   const [name, setName] = useState('');
-  const [kind, setKind] = useState<SkillKind>('quest');
   const [errors, setErrors] = useState<TrainingFieldError[]>([]);
   const [saving, setSaving] = useState(false);
 
@@ -160,9 +60,10 @@ function NewSkillForm({ onDone }: { onDone(): void }) {
 
     setSaving(true);
     try {
-      // No cap check: a new skill is created parked. Activating it is the
-      // decision the cap governs, and that goes through `canActivateQuest`.
-      await actions.createSkill({ name, kind });
+      // No quest-or-practice question: a new skill has no checkpoints, so it is
+      // practice until you write one. Adding a checkpoint is what makes it a
+      // quest, which is the same decision without the extra tap (ADR 0014).
+      await actions.createSkill({ name });
       setName('');
       onDone();
     } finally {
@@ -182,18 +83,7 @@ function NewSkillForm({ onDone }: { onDone(): void }) {
       />
       {errors[0] && <p className="field-error">{errors[0].message}</p>}
 
-      <div className="chip-row">
-        {(['quest', 'practice'] as const).map((option) => (
-          <button
-            key={option}
-            type="button"
-            className={`chip chip--button${kind === option ? ' chip--on' : ''}`}
-            aria-pressed={kind === option}
-            onClick={() => setKind(option)}
-          >
-            {SKILL_KIND_LABELS[option]}
-          </button>
-        ))}
+      <div className="form__actions">
         <button type="submit" disabled={saving}>
           {saving ? 'Adding…' : 'Add'}
         </button>
@@ -227,12 +117,13 @@ function SeedPrompt() {
   }
 
   const path = startingPathFor(discipline);
-  const quests = path.filter((item) => item.kind === 'quest').length;
+  // A seeded skill is a quest exactly when it ships checkpoints (ADR 0014).
+  const quests = path.filter((item) => (item.checkpoints?.length ?? 0) > 0).length;
   // The goals are the ends of the chains — whatever this discipline's are,
   // rather than three pole moves hardcoded into the copy.
   const required = new Set(path.flatMap((item) => item.requires ?? []));
   const goals = path
-    .filter((item) => item.kind === 'quest' && !required.has(item.key) && item.requires?.length)
+    .filter((item) => !required.has(item.key) && item.requires?.length)
     .map((item) => item.name)
     .slice(0, 3);
 
@@ -240,9 +131,11 @@ function SeedPrompt() {
     <section className="card stack">
       <h2>Start from a map</h2>
       <p className="muted">
-        {quests} moves{goals.length > 1 && ` on the road to ${goals.slice(0, -1).join(', ')} and ${goals.at(-1)}`},
-        plus the conditioning underneath — each with a checkpoint or two to argue with. All of it
-        is yours to rename, re-order or delete.
+        {quests} moves
+        {goals.length > 1 &&
+          ` on the road to ${goals.slice(0, -1).join(', ')} and ${goals.at(-1)}`}
+        , plus the conditioning underneath — each with a checkpoint or two to argue with. All of
+        it is yours to rename, re-order or delete.
       </p>
       {failure && <p className="field-error">{failure}</p>}
       <div className="form__actions">
