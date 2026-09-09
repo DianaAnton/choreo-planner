@@ -17,6 +17,7 @@ const pole: DisciplineProfile = {
   categoryLabels: { invert: 'Inverts and holds' },
   cleanRepTest: { kind: 'hold', minMs: 3000 },
   hasChoreo: true,
+  sessionShape: [],
 };
 
 const skate: DisciplineProfile = {
@@ -26,6 +27,7 @@ const skate: DisciplineProfile = {
   cleanRepTest: { kind: 'consistency', land: 8, outOf: 10 },
   ladderLabels: { inChoreo: 'In a line' },
   hasChoreo: false,
+  sessionShape: [],
 };
 
 describe('the cleanRep test', () => {

@@ -31,6 +31,7 @@ Everything about this project that isn't code.
 | [0012](decisions/0012-ship-a-starting-curriculum.md) | Ship a starting curriculum, and a map instead of a list |
 | [0013](decisions/0013-two-disciplines.md) | Two disciplines, and what that cost |
 | [0014](decisions/0014-kind-is-derived.md) | A skill's kind is derived, not asked for |
+| [0015](decisions/0015-session-plans-are-derived.md) | A session plan is derived, and the goal is not what you train |
 
 ## Adding to this
 

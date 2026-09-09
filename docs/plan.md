@@ -117,6 +117,13 @@ Rationale in [decisions/0011-training-layer.md](decisions/0011-training-layer.md
    work on a phone in a basement studio, and shipping them without install is
    shipping them unusable.
 
+6. **The session plan** — added after the fact, because the tracker could say
+   what you had done and what you were working on but not what to do with the
+   next fifty minutes. Derived from the `requires` chain rather than stored:
+   you train the nearest thing on the way to a goal that is not clean yet, not
+   the goal. Warm-up and cool-down are a tick.
+   See [decisions/0015-session-plans-are-derived.md](decisions/0015-session-plans-are-derived.md).
+
 **Exit criteria:** log a real open-training session on the phone, offline, and
 watch a ladder state change. Then do it again the following week and see the
 first one still there.

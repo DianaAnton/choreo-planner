@@ -1,6 +1,7 @@
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 
 import type { DisciplineProfile } from '../../domain/discipline';
+import { planSession, type SessionPlan } from '../../domain/sessionPlan';
 import {
   addDays,
   todayKey,
@@ -9,7 +10,7 @@ import {
   type Skill,
 } from '../../domain/training';
 import type { TrainingRepository } from '../../repositories/types';
-import { TrainingContext, type TrainingState } from './TrainingContext';
+import { TrainingContext, type PlanState, type TrainingState } from './TrainingContext';
 
 /**
  * How far back the session subscription reaches. Long enough to answer the two
@@ -33,10 +34,16 @@ export function TrainingProvider({ repository, profile, children }: Props) {
   const [inbox, setInbox] = useState<InboxItem[]>([]);
   const [pending, setPending] = useState(3);
   const [error, setError] = useState<Error | null>(null);
+  const [plan, setPlan] = useState<SessionPlan | null>(null);
+  const [ticked, setTicked] = useState<ReadonlySet<string>>(() => new Set());
 
   useEffect(() => {
     setPending(3);
     setError(null);
+    // A pole plan is meaningless once the screen is showing skateboarding, and
+    // its block ids would collide with the new discipline's.
+    setPlan(null);
+    setTicked(new Set());
 
     // One decrement per collection, on its first snapshot or its first failure,
     // so "loading" ends even when one listener never resolves happily.
@@ -91,6 +98,30 @@ export function TrainingProvider({ repository, profile, children }: Props) {
     };
   }, [repository, discipline]);
 
+  const planState = useMemo<PlanState>(
+    () => ({
+      current: plan,
+      ticked,
+      start: (minutes) => {
+        // Built from the skills as they are right now, then left alone. The
+        // live list keeps updating underneath; the plan does not follow it.
+        setPlan(planSession(skills, minutes, profile));
+        setTicked(new Set());
+      },
+      toggle: (blockId) =>
+        setTicked((current) => {
+          const next = new Set(current);
+          if (!next.delete(blockId)) next.add(blockId);
+          return next;
+        }),
+      discard: () => {
+        setPlan(null);
+        setTicked(new Set());
+      },
+    }),
+    [plan, ticked, skills, profile],
+  );
+
   const value = useMemo<TrainingState>(
     () => ({
       repository,
@@ -100,8 +131,9 @@ export function TrainingProvider({ repository, profile, children }: Props) {
       inbox,
       loading: pending > 0,
       error,
+      plan: planState,
     }),
-    [repository, profile, skills, sessions, inbox, pending, error],
+    [repository, profile, skills, sessions, inbox, pending, error, planState],
   );
 
   return <TrainingContext.Provider value={value}>{children}</TrainingContext.Provider>;

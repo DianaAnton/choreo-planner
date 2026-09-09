@@ -27,7 +27,7 @@ import type {
   NewSkill,
   TrainingRepository,
 } from '../../repositories/types';
-import { TrainingContext } from './TrainingContext';
+import { TrainingContext, type PlanState } from './TrainingContext';
 
 export interface TrainingActions {
   /** `discipline` comes from the provider — callers never repeat it. */
@@ -82,6 +82,8 @@ export interface TrainingView {
   daysTrainedThisWeek: number;
   weeklyTarget: number;
   questSlotsLeft: number;
+  /** The session plan you are working through, if you started one. */
+  plan: PlanState;
   actions: TrainingActions;
 }
 
@@ -91,7 +93,7 @@ export function useTraining(): TrainingView {
     throw new Error('useTraining must be used inside <TrainingProvider>');
   }
 
-  const { repository, profile, skills, sessions, inbox, loading, error } = context;
+  const { repository, profile, skills, sessions, inbox, loading, error, plan } = context;
   const discipline = profile.id;
 
   // Read from the wall clock rather than pinned in state — staleness measured
@@ -215,8 +217,22 @@ export function useTraining(): TrainingView {
       daysTrainedThisWeek: trainingDaysInWeekOf(sessions, today),
       weeklyTarget: DEFAULT_WEEKLY_SESSION_TARGET,
       questSlotsLeft: activeQuestSlotsLeft(skills),
+      plan,
       actions,
     }),
-    [repository, skills, sessions, inbox, loading, error, discipline, profile, now, today, actions],
+    [
+      repository,
+      skills,
+      sessions,
+      inbox,
+      loading,
+      error,
+      discipline,
+      profile,
+      now,
+      today,
+      plan,
+      actions,
+    ],
   );
 }

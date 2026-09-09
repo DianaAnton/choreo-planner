@@ -808,3 +808,95 @@ not just the source. The kind/checkpoint agreement across both seeds was
 measured, not assumed — it is what the whole change rests on.
 Crossing counts measured rather than assumed, in both directions. Both
 disciplines' grouping and Today list printed and read, not inferred.
+
+## 2026-09-09 — A written session plan
+
+Asked for a 50-minute plan: warm-up and cool-down as a tick each ("I know what
+to do"), some conditioning, some static and spin work, aimed at a shoulder mount
+and an Ayesha, from someone whose invert has gone scruffy. And: "idk where to
+start."
+
+That last sentence is the feature. Everything needed to answer it was already
+stored — ADR 0012 put the `requires` chain in, ADR 0011 defined "actually there"
+as `cleanRep` — and nothing had ever computed the answer.
+
+### The goal is not what you train
+
+`trainableTowards` walks down the chain and returns what you can train *today*:
+the skills whose prerequisites are met but which are not met themselves. Run
+against the shipped pole curriculum with both goals active and the invert at
+`uglyRep`, the frontier is one row:
+
+    Basic invert → Ayesha + Shoulder mount
+
+Four rungs below the thing she asked for. `frontier` orders by how many goals
+wait on a step before it orders by staleness, which is what surfaces that: a
+shared prerequisite is worth more of a fifty-minute session than either goal.
+
+The planner never activates anything. The quest cap still decides what you are
+chasing; with nothing active there is no goal work and the screen says so
+instead of picking for you.
+
+### The session's shape belongs to the discipline
+
+`sessionShape` on `DisciplineProfile`, required with no default. Lanes are
+either fixed (a duration, no content — the warm-up tick) or a share of what is
+left, drawn from the frontier or from named categories.
+
+Making it required broke both test fixtures, which is the seam doing its job.
+Conditioning goes **last** for pole: it is what burns out the grip the inverted
+work needs, so doing it first buys a tired session for an early sense of
+progress.
+
+### Printed, not inferred
+
+The first real 50-minute plan put **Bridge** and **Feet and toes** in the
+conditioning block. The lane drew from `['conditioning', 'flexibility']`, every
+skill was never-trained so staleness was a tie, and alphabetical did the rest —
+a strength block full of stretching, for someone whose goal is a deadlift into a
+shoulder mount. Narrowed to `['conditioning']`; it now opens on grip work.
+
+Only visible by printing the actual output for the actual scenario. The unit
+tests were all green through the wrong version, because "does the block contain
+skills from its categories" was true either way.
+
+### The minutes add up
+
+Largest remainder, so fifty is fifty and not 49. Empty lanes are dropped before
+allocation and hand their minutes to the rest; lanes that cannot clear a
+four-minute floor are dropped lightest-first, because three three-minute blocks
+is not a shorter session, it is a worse one. There is a test for every length
+from 20 to 120.
+
+### Nothing stored
+
+A plan is derived, like the Today list ([ADR 0015](decisions/0015-session-plans-are-derived.md)).
+It lives in `TrainingProvider` — high enough that tapping into a skill to read
+your notes does not lose your ticks — and is frozen when built, so it cannot
+rewrite itself mid-session. Finishing hands the ticked blocks to the Log screen
+with skills and minutes prefilled, and *that* write is the record. A fourth
+collection with its own rules and migration, to remember something whose whole
+life is the next fifty minutes, was not worth it.
+
+Ticks do not survive a reload. Called out on the screen rather than engineered
+around.
+
+### Judgement calls worth flagging
+
+- **Conditioning rotates by staleness, not relevance.** Nothing knows that
+  scapular work serves a shoulder mount — conditioning skills are `loose` in the
+  graph on purpose. Stalest-first is a proxy that self-corrects as sessions get
+  logged. Wiring conditioning into `requires` is a real modelling change and was
+  not made.
+- **The plan tests against the shipped profiles live in `src/app/registry.test.ts`,
+  not in `bothDisciplines.test.ts`.** They need `POLE` and `SKATEBOARD`, and no
+  file in `src/domain/` may import from `src/app/`. Writing that import was the
+  first thing I did; putting the test next to the registrations was the fix.
+- Added a 50m chip to the Log screen's quick durations, since that is now the
+  length the plan defaults to.
+
+### Verified
+
+lint · typecheck · 249 unit tests (194 before) · build. The 50-minute plan for
+the described scenario printed and read, not inferred — including the version
+that was wrong.
