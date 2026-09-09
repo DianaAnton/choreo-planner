@@ -12,11 +12,17 @@ import {
 import type { Id } from '../../domain/types';
 import { useTraining } from './useTraining';
 
-const QUICK_DURATIONS = [30, 45, 60, 90];
+const QUICK_DURATIONS = [30, 45, 50, 60, 90];
 
 interface Props {
   onSaved(): void;
   onCancel(): void;
+  /**
+   * Prefill, when you arrived here from a plan you just worked through. Only a
+   * starting point — every field stays editable, because what you ticked and
+   * what you did are not always the same thing.
+   */
+  initial?: { skillIds?: readonly Id[]; durationMin?: number };
 }
 
 /**
@@ -28,13 +34,13 @@ interface Props {
  * without one the number cannot become a best (see `improvedMetric`), and an
  * input that silently discards what you type is worse than no input.
  */
-export function LogSessionForm({ onSaved, onCancel }: Props) {
+export function LogSessionForm({ onSaved, onCancel, initial }: Props) {
   const { skills, actions } = useTraining();
 
   const [date, setDate] = useState(todayKey());
-  const [durationMin, setDurationMin] = useState(60);
+  const [durationMin, setDurationMin] = useState(initial?.durationMin ?? 60);
   const [felt, setFelt] = useState<1 | 2 | 3>(2);
-  const [selected, setSelected] = useState<Id[]>([]);
+  const [selected, setSelected] = useState<Id[]>(() => [...(initial?.skillIds ?? [])]);
   const [marks, setMarks] = useState<Record<Id, string>>({});
   const [note, setNote] = useState('');
   const [errors, setErrors] = useState<TrainingFieldError[]>([]);

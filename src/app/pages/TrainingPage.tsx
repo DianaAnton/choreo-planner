@@ -1,4 +1,4 @@
-import { Link, useNavigate, useParams } from 'react-router';
+import { Link, useLocation, useNavigate, useParams } from 'react-router';
 
 import { AccountBar } from '../../features/auth';
 import { InstallPrompt } from '../../features/pwa';
@@ -7,11 +7,13 @@ import {
   DisciplineSwitch,
   InboxScreen,
   LogSessionForm,
+  SessionPlanScreen,
   SkillDetail,
   SkillsScreen,
   TodayScreen,
   useTraining,
 } from '../../features/training';
+import type { Id } from '../../domain/types';
 
 /**
  * The training screens share a shell: one header, one nav, one back link. They
@@ -55,6 +57,14 @@ export function TodayPage() {
   );
 }
 
+export function PlanPage() {
+  return (
+    <TrainingShell title="Plan">
+      <SessionPlanScreen />
+    </TrainingShell>
+  );
+}
+
 export function SkillsPage() {
   return (
     <TrainingShell title="Skills">
@@ -71,16 +81,52 @@ export function InboxPage() {
   );
 }
 
+/**
+ * What a plan hands over when you finish it: the skills its ticked blocks
+ * named, and how many minutes those blocks came to. Router state rather than a
+ * query string — it is a handoff between two screens, not a URL worth sharing.
+ */
+interface LogPrefill {
+  skillIds?: readonly Id[];
+  durationMin?: number;
+}
+
 export function LogPage() {
   const navigate = useNavigate();
+  const { plan } = useTraining();
+  // Anything can be pushed into router state, including by a stale tab after a
+  // deploy, so read it defensively rather than trusting the shape.
+  const prefill = usePrefill();
+
   return (
     <TrainingShell title="Log">
       <LogSessionForm
-        onSaved={() => void navigate('/training')}
+        {...(prefill ? { initial: prefill } : {})}
+        onSaved={() => {
+          // The plan is done with once it has been logged; leaving it around
+          // would offer to log the same session twice.
+          plan.discard();
+          void navigate('/training');
+        }}
         onCancel={() => void navigate(-1)}
       />
     </TrainingShell>
   );
+}
+
+function usePrefill(): LogPrefill | null {
+  const { state } = useLocation();
+  if (typeof state !== 'object' || state === null) return null;
+
+  const { skillIds, durationMin } = state as LogPrefill;
+  const ids = Array.isArray(skillIds) ? skillIds.filter((id) => typeof id === 'string') : [];
+  const minutes =
+    typeof durationMin === 'number' && Number.isFinite(durationMin) && durationMin > 0
+      ? durationMin
+      : undefined;
+
+  if (ids.length === 0 && minutes === undefined) return null;
+  return { skillIds: ids, ...(minutes === undefined ? {} : { durationMin: minutes }) };
 }
 
 export function SkillPage() {

@@ -11,6 +11,7 @@ import {
   type Skill,
   type TodayReason,
 } from '../../domain/training';
+import { plannedMinutes, trainedIn } from '../../domain/sessionPlan';
 import { LadderMeter } from './LadderMeter';
 import { useTraining } from './useTraining';
 
@@ -30,7 +31,8 @@ import { useTraining } from './useTraining';
  * against Phase 2.5 in docs/plan.md.
  */
 export function TodayScreen() {
-  const { skills, inbox, daysTrainedThisWeek, weeklyTarget, loading, error } = useTraining();
+  const { skills, inbox, daysTrainedThisWeek, weeklyTarget, loading, error, plan } =
+    useTraining();
 
   const now = Date.now();
   const rows = todayList(skills, now);
@@ -42,9 +44,19 @@ export function TodayScreen() {
           <strong>{daysTrainedThisWeek}</strong>
           <span className="muted"> of {weeklyTarget} days this week</span>
         </p>
-        <Link className="button-link primary" to="/training/log">
-          Log a session
-        </Link>
+        <div className="week__actions">
+          {/* A plan in progress takes the primary slot: you left this screen to
+              go and do it, and coming back to "Plan a session" would read as
+              though it had been thrown away. */}
+          <Link className="button-link primary" to="/training/plan">
+            {plan.current
+              ? `Your plan · ${trainedIn(plan.current, plan.ticked).minutes}/${plannedMinutes(plan.current)} min`
+              : 'Plan a session'}
+          </Link>
+          <Link className="button-link" to="/training/log">
+            Log a session
+          </Link>
+        </div>
       </section>
 
       {error && (

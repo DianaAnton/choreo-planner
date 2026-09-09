@@ -24,6 +24,55 @@ export type CleanRepTest =
   | { kind: 'hold'; minMs: number }
   | { kind: 'consistency'; land: number; outOf: number };
 
+/**
+ * How a session in this discipline is built: the lanes it divides into, in the
+ * order they are trained.
+ *
+ * Here rather than in the planner for the same reason `defaultCategories` is:
+ * "conditioning last, because it burns out the grip the pole work needs" is a
+ * fact about pole, and a planner that knew it would be a planner that only
+ * works for pole. The planner does the arithmetic; the profile says what the
+ * session is made of.
+ */
+export type SessionLane = FixedLane | SkillLane;
+
+/**
+ * A block with a duration and nothing in it — you already know what to do, and
+ * the app has no business listing your warm-up back at you. It is a tick.
+ *
+ * Fixed minutes rather than a share, because a warm-up does not get shorter
+ * because you also want to do spins.
+ */
+export interface FixedLane {
+  kind: 'fixed';
+  id: string;
+  label: string;
+  minutes: number;
+  note?: string;
+}
+
+/**
+ * Where a lane's skills come from.
+ *
+ * `frontier` is the interesting one: not the goal, but the nearest thing on the
+ * way to it that is not clean yet. See `trainableTowards` in `sessionPlan.ts`.
+ */
+export type LanePick =
+  | { from: 'frontier' }
+  | { from: 'categories'; categories: readonly string[] };
+
+export interface SkillLane {
+  kind: 'skills';
+  id: string;
+  label: string;
+  /** Share of whatever the fixed lanes leave, relative to the other skill lanes. */
+  weight: number;
+  pick: LanePick;
+  /** A lane naming six things is a list, not a plan. */
+  maxSkills: number;
+  note?: string;
+}
+
 export interface DisciplineProfile {
   id: string;
   label: string;
@@ -47,6 +96,12 @@ export interface DisciplineProfile {
    * against a song.
    */
   hasChoreo: boolean;
+  /**
+   * The shape of a session in this discipline. Required, with no default: a
+   * neutral fallback would be a guess at somebody's training order, and a
+   * discipline added without thinking about it should not compile.
+   */
+  sessionShape: readonly SessionLane[];
 }
 
 export function describeCleanRep(test: CleanRepTest): string {

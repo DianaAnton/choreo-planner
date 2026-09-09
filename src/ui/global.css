@@ -405,6 +405,79 @@ label {
   font-size: 1.6rem;
 }
 
+.week__actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+/* --- The session plan ---------------------------------------------------- */
+
+.plan {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.plan__block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* Ticked blocks recede rather than disappear: the plan is also a record of
+   what you have already done, and you read down it as the session goes. */
+.plan__block--done {
+  opacity: 0.55;
+}
+
+.plan__head {
+  gap: 0.6rem;
+}
+
+.plan__title {
+  flex: 1;
+  font-weight: 600;
+}
+
+.plan__minutes {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.plan__towards {
+  margin: 0;
+  color: var(--accent);
+  font-size: 0.9rem;
+}
+
+.plan__skills {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  /* Indented to the checkbox, so the block reads as one thing. */
+  padding-left: 2rem;
+}
+
+.plan__skills p {
+  margin: 0.15rem 0 0;
+}
+
+.plan__skill {
+  color: var(--fg);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.plan__skill:hover {
+  text-decoration: underline;
+}
+
+.plan__note {
+  margin: 0;
+}
+
 /* --- The ladder ---------------------------------------------------------- */
 
 .ladder {

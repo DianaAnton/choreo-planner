@@ -1,6 +1,7 @@
 export { TrainingProvider, SESSION_WINDOW_DAYS } from './TrainingProvider';
 export { useTraining } from './useTraining';
 export { TodayScreen } from './TodayScreen';
+export { SessionPlanScreen } from './SessionPlanScreen';
 export { SkillsScreen } from './SkillsScreen';
 export { SkillMap } from './SkillMap';
 export { SkillImagePanel } from './SkillImagePanel';
@@ -9,5 +10,5 @@ export { LogSessionForm } from './LogSessionForm';
 export { InboxScreen } from './InboxScreen';
 export { LadderMeter } from './LadderMeter';
 export { DisciplineSwitch } from './DisciplineSwitch';
-export type { TrainingState } from './TrainingContext';
+export type { PlanState, TrainingState } from './TrainingContext';
 export type { TrainingActions, TrainingView } from './useTraining';

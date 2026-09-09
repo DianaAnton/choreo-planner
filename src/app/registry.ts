@@ -97,6 +97,66 @@ export const POLE: DisciplineProfile = {
   // The brief's "hold every shape at least 3 seconds" constraint.
   cleanRepTest: { kind: 'hold', minMs: 3000 },
   hasChoreo: true,
+
+  /**
+   * The order is the argument, and it is not the order you would write down.
+   *
+   * Goal work goes second, on a fresh grip — deadlifting into a shoulder mount
+   * is the hardest thing in the session and the first thing to fall apart when
+   * the forearms are gone. Conditioning goes *last* for the same reason: grip
+   * and scapular work is what burns out the hands you need for the pole, so
+   * doing it first buys a tired session in exchange for feeling productive
+   * early. Spins sit between them because by then the hard part is done and
+   * you should be moving rather than gripping.
+   */
+  sessionShape: [
+    {
+      kind: 'fixed',
+      id: 'warmup',
+      label: 'Warm up',
+      minutes: 8,
+      note: 'Yours. Tick it when it is done.',
+    },
+    {
+      kind: 'skills',
+      id: 'goal',
+      label: 'Goal work',
+      weight: 3,
+      maxSkills: 2,
+      pick: { from: 'frontier' },
+      note: 'The nearest thing on the way to what you are working towards — not the goal itself. Both sides, and stop before the shape goes.',
+    },
+    {
+      kind: 'skills',
+      id: 'flow',
+      label: 'Spins and shapes',
+      weight: 2,
+      maxSkills: 3,
+      pick: { from: 'categories', categories: ['spin', 'climb', 'floorwork', 'transition'] },
+      note: 'Whatever has gone longest untouched. The hard part is behind you — move rather than grip.',
+    },
+    {
+      kind: 'skills',
+      id: 'conditioning',
+      label: 'Conditioning',
+      weight: 2,
+      maxSkills: 2,
+      // Conditioning only, not flexibility. Drawn from both, a stalest-first
+      // pick reliably surfaced a bridge and some ankle work in the block that
+      // is supposed to be building the straight-arm strength everything above
+      // it is waiting on. Stretching belongs either side of the session, which
+      // is where the warm-up and cool-down already are.
+      pick: { from: 'categories', categories: ['conditioning'] },
+      note: 'Last on purpose: this is what burns out the grip everything above needs.',
+    },
+    {
+      kind: 'fixed',
+      id: 'cooldown',
+      label: 'Cool down',
+      minutes: 5,
+      note: 'Yours. Tick it when it is done.',
+    },
+  ],
 };
 
 /**
@@ -125,6 +185,55 @@ export const SKATEBOARD: DisciplineProfile = {
     inChoreo: 'Landed in a line, between other tricks, without setting up for it.',
   },
   hasChoreo: false,
+
+  /**
+   * The same skeleton, worded and ordered for a session at a park. Trick work
+   * early, when the legs are fresh and a slam is least likely; lines after,
+   * because linking tricks is the part you can still do tired; body prep last.
+   */
+  sessionShape: [
+    {
+      kind: 'fixed',
+      id: 'warmup',
+      label: 'Warm up',
+      minutes: 8,
+      note: 'Yours. Tick it when it is done.',
+    },
+    {
+      kind: 'skills',
+      id: 'goal',
+      label: 'Trick work',
+      weight: 3,
+      maxSkills: 2,
+      pick: { from: 'frontier' },
+      note: 'The nearest trick on the way to what you are working towards — not the trick itself.',
+    },
+    {
+      kind: 'skills',
+      id: 'flow',
+      label: 'Lines',
+      weight: 2,
+      maxSkills: 3,
+      pick: { from: 'categories', categories: ['basics', 'flatground', 'grind', 'transition'] },
+      note: 'Whatever has gone longest untouched, rolled into something continuous.',
+    },
+    {
+      kind: 'skills',
+      id: 'conditioning',
+      label: 'Body prep',
+      weight: 2,
+      maxSkills: 2,
+      pick: { from: 'categories', categories: ['conditioning'] },
+      note: 'Ankles and legs, after the skating rather than before it.',
+    },
+    {
+      kind: 'fixed',
+      id: 'cooldown',
+      label: 'Cool down',
+      minutes: 5,
+      note: 'Yours. Tick it when it is done.',
+    },
+  ],
 };
 
 disciplines.register(POLE);

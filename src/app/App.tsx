@@ -11,7 +11,14 @@ import { UpdatePrompt } from '../features/pwa';
 import { isFirebaseConfigured } from '../lib/firebase';
 import { ProjectPage } from './pages/ProjectPage';
 import { ProjectsPage } from './pages/ProjectsPage';
-import { InboxPage, LogPage, SkillPage, SkillsPage, TodayPage } from './pages/TrainingPage';
+import {
+  InboxPage,
+  LogPage,
+  PlanPage,
+  SkillPage,
+  SkillsPage,
+  TodayPage,
+} from './pages/TrainingPage';
 import { POLE, disciplines } from './registry';
 
 /**
@@ -127,6 +134,7 @@ function DisciplineGate({ repository }: { repository: FirestoreTrainingRepositor
       <UpdatePrompt />
       <Routes>
         <Route path="/training" element={<TodayPage />} />
+        <Route path="/training/plan" element={<PlanPage />} />
         <Route path="/training/log" element={<LogPage />} />
         <Route path="/training/inbox" element={<InboxPage />} />
         <Route path="/training/skills" element={<SkillsPage />} />
